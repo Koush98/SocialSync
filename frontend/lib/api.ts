@@ -75,3 +75,21 @@ export function createPost(payload: {
     body: JSON.stringify(payload),
   });
 }
+
+export function publishPostNow(postId: number) {
+  return apiFetch<{ post_id: number; status: string; task_id: string | null }>(
+    `/api/v1/posts/${postId}/publish-now`,
+    {
+      method: "POST",
+    },
+  );
+}
+
+export function cancelPost(postId: number) {
+  return apiFetch<{ post_id: number; status: string; task_id: string | null }>(
+    `/api/v1/posts/${postId}/cancel`,
+    {
+      method: "POST",
+    },
+  );
+}

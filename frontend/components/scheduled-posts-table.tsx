@@ -15,9 +15,15 @@ function formatDate(value?: string | null) {
 export function ScheduledPostsTable({
   posts,
   accounts,
+  onPublishNow,
+  onCancel,
+  busyPostId,
 }: {
   posts: Post[];
   accounts: Account[];
+  onPublishNow: (postId: number) => void;
+  onCancel: (postId: number) => void;
+  busyPostId: number | null;
 }) {
   const accountMap = new Map(accounts.map((account) => [account.id, account]));
 
@@ -41,6 +47,7 @@ export function ScheduledPostsTable({
             <th>Scheduled</th>
             <th>Status</th>
             <th>Retries</th>
+            <th>Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -69,6 +76,26 @@ export function ScheduledPostsTable({
                 </td>
                 <td>
                   {post.retry_count} / {post.max_retries}
+                </td>
+                <td>
+                  <div className="cta-row">
+                    <button
+                      className="btn secondary"
+                      disabled={busyPostId === post.id || post.status === "posted" || post.status === "processing"}
+                      onClick={() => onPublishNow(post.id)}
+                      type="button"
+                    >
+                      {busyPostId === post.id ? "Working..." : "Publish now"}
+                    </button>
+                    <button
+                      className="btn secondary"
+                      disabled={busyPostId === post.id || post.status === "posted" || post.status === "cancelled"}
+                      onClick={() => onCancel(post.id)}
+                      type="button"
+                    >
+                      Cancel
+                    </button>
+                  </div>
                 </td>
               </tr>
             );
