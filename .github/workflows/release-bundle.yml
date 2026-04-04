@@ -1,0 +1,24 @@
+name: Release Bundle
+
+on:
+  workflow_dispatch:
+
+jobs:
+  bundle:
+    name: Create Release Bundle
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Prepare bundle
+        run: |
+          mkdir -p dist
+          zip -r dist/socialsync-release.zip app frontend alembic tests pyproject.toml alembic.ini docker-compose.yml Dockerfile .github .gitignore
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: socialsync-release-bundle
+          path: dist/socialsync-release.zip
