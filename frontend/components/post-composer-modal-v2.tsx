@@ -573,7 +573,7 @@ export function PostComposerModal({ open, onClose, onCreated }: Props) {
                     <p className="text-sm text-ink-600">Enable the channels you want and click Settings to fine-tune.</p>
                   </div>
                 </div>
-                <div className="grid grid-cols-5 gap-3">
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                   {platforms.map((platform) => {
                     const hasAccounts = accountsByPlatform[platform].length > 0;
                     const enabled = configs[platform].enabled;
