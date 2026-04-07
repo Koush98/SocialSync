@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SnapKey Scheduled Posts</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body data-page="posts">
+    <div class="shell">
+      <header class="topbar">
+        <div class="brand">
+          <div class="brand-kicker">SnapKey CRM module</div>
+          <h1>Scheduled posts</h1>
+          <p>Review queued, scheduled, processing, posted, failed, and cancelled work from a small static admin view.</p>
+        </div>
+        <nav class="nav">
+          <a href="./index.html">Dashboard</a>
+          <a class="active" href="./posts.html">Scheduled posts</a>
+          <a href="./privacy.html">Privacy</a>
+          <a href="./terms.html">Terms</a>
+        </nav>
+      </header>
+
+      <section class="card section">
+        <h2 class="section-title">Post operations</h2>
+        <p class="section-copy">Publish now, cancel, inspect provider IDs, review failures, and edit payloads.</p>
+        <div id="posts-banner"></div>
+        <div id="posts-empty" class="empty" style="display:none">No posts found yet.</div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Account</th>
+                <th>Platform</th>
+                <th>Content</th>
+                <th>Scheduled</th>
+                <th>Status</th>
+                <th>Retries</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="posts-table-body"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <div class="grid two" style="margin-top:18px">
+        <section class="card section" id="edit-panel" style="display:none">
+          <h2 class="section-title">Edit post</h2>
+          <p class="section-copy">Adjust content, schedule, media IDs, or platform options JSON, then save.</p>
+          <form id="edit-post-form" class="field-grid">
+            <input id="edit-post-id" type="hidden" />
+            <div class="field"><label for="edit-content">Content</label><textarea id="edit-content"></textarea></div>
+            <div class="field"><label for="edit-scheduled-at">Schedule time</label><input id="edit-scheduled-at" type="datetime-local" /></div>
+            <div class="field"><label for="edit-media-ids">Media IDs</label><input id="edit-media-ids" type="text" placeholder="1,2,3" /></div>
+            <div class="field"><label for="edit-platform-options">Platform options JSON</label><textarea id="edit-platform-options"></textarea></div>
+            <div class="cta-row">
+              <button class="btn primary" type="submit">Save changes</button>
+              <button class="btn ghost" id="edit-cancel" type="button">Close</button>
+            </div>
+          </form>
+        </section>
+
+        <section class="card section">
+          <h2 class="section-title">Activity log</h2>
+          <p class="section-copy">Operational actions and errors from this page appear here.</p>
+          <div id="activity-log" class="log-list">
+            <div class="log-item"><strong>Ready</strong><div class="helper-text" style="margin-top:6px">Post page activity will appear here.</div></div>
+          </div>
+        </section>
+      </div>
+    </div>
+    <script src="./app.js"></script>
+  </body>
+</html>

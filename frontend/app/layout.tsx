@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { DM_Sans, Space_Grotesk } from "next/font/google";
+
+import { AppShell } from "@/components/app-shell";
 
 import "./globals.css";
 
@@ -27,25 +28,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${bodyFont.variable} ${displayFont.variable}`}>
-        <div className="shell">
-          <header className="topbar">
-            <div className="brand">
-              <div className="brand-kicker">SnapKey CRM</div>
-              <h1>Social Publishing</h1>
-              <p>
-                Connect channels, prepare campaign content, and monitor scheduled execution inside
-                the SnapKey operating workspace.
-              </p>
-            </div>
-            <nav className="nav">
-              <Link href="/">Dashboard</Link>
-              <Link href="/posts">Scheduled Posts</Link>
-              <Link href="/privacy-policy">Privacy</Link>
-              <Link href="/terms">Terms</Link>
-            </nav>
-          </header>
-          {children}
-        </div>
+        <AppShell>{children}</AppShell>
       </body>
     </html>
   );

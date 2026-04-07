@@ -6,7 +6,7 @@ from app.core.config import get_settings
 settings = get_settings()
 
 engine = create_engine(settings.DATABASE_URL)
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, expire_on_commit=False, bind=engine)
 
 
 def set_request_context(db, tenant_id: str, user_id: str = "", role: str = "user") -> None:

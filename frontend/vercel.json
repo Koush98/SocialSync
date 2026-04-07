@@ -1,0 +1,13 @@
+{
+  "buildCommand": "next build",
+  "devCommand": "next dev",
+  "installCommand": "npm install",
+  "framework": "nextjs",
+  "outputDirectory": ".next",
+  "regions": ["iad1"],
+  "env": {
+    "NEXT_PUBLIC_API_BASE_URL": "@next_public_api_base_url",
+    "NEXT_PUBLIC_TENANT_ID": "@next_public_tenant_id",
+    "NEXT_PUBLIC_AUTH_TOKEN_STORAGE_KEY": "socialsync_jwt"
+  }
+}

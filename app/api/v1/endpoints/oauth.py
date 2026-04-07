@@ -3,30 +3,44 @@ import hashlib
 import secrets
 from typing import Optional
 from urllib.parse import urlencode
-from fastapi import APIRouter, Cookie, HTTPException, Query, status
+from fastapi import APIRouter, HTTPException, Query, status
 
 import requests
 from fastapi.responses import RedirectResponse
 
 from app.core.config import get_settings
+from app.core.logging import get_logger
+from app.core.redis_client import redis_client
 from app.services.oauth_service import save_social_account
 
 router = APIRouter()
 settings = get_settings()
+logger = get_logger("app.oauth")
 
 
-def _build_state(tenant_id):
+def _build_state(tenant_id: str):
     nonce = secrets.token_urlsafe(16)
     return "{0}:{1}".format(tenant_id, nonce)
 
 
-def _extract_tenant_from_state(state):
+def _extract_tenant_and_nonce_from_state(state: str):
     if not state or ":" not in state:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid OAuth state",
         )
-    return state.split(":", 1)[0]
+    tenant_id, nonce = state.split(":", 1)
+    if not tenant_id or not nonce:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid OAuth state",
+        )
+    return tenant_id, nonce
+
+
+def _extract_tenant_from_state(state: str):
+    tenant_id, _ = _extract_tenant_and_nonce_from_state(state)
+    return tenant_id
 
 
 def _page_accounts(access_token: str):
@@ -46,6 +60,13 @@ def _raise_provider_error(provider, response):
     except Exception:
         payload = response.text
 
+    logger.error(
+        "oauth.provider_error provider=%s status_code=%s payload=%s",
+        provider,
+        response.status_code,
+        payload,
+    )
+
     raise HTTPException(
         status_code=status.HTTP_400_BAD_REQUEST,
         detail={
@@ -62,10 +83,32 @@ def _detail_message(detail) -> str:
     if isinstance(detail, dict):
         provider = detail.get("provider")
         response = detail.get("response")
+        if isinstance(response, str) and response.strip():
+            return f"{provider or 'OAuth'}: {response}"
         if isinstance(response, dict):
+            if response.get("error_description"):
+                return f"{provider or 'OAuth'}: {response['error_description']}"
+            if isinstance(response.get("error"), str):
+                description = response.get("error_description")
+                if description:
+                    return f"{provider or 'OAuth'}: {description}"
+                return f"{provider or 'OAuth'}: {response['error']}"
             error = response.get("error")
             if isinstance(error, dict) and error.get("message"):
                 return f"{provider or 'OAuth'}: {error['message']}"
+            if isinstance(error, dict) and error.get("detail"):
+                return f"{provider or 'OAuth'}: {error['detail']}"
+            if response.get("detail"):
+                return f"{provider or 'OAuth'}: {response['detail']}"
+            if response.get("title"):
+                return f"{provider or 'OAuth'}: {response['title']}"
+            errors = response.get("errors")
+            if isinstance(errors, list) and errors:
+                first_error = errors[0]
+                if isinstance(first_error, dict):
+                    for key in ("message", "detail", "reason"):
+                        if first_error.get(key):
+                            return f"{provider or 'OAuth'}: {first_error[key]}"
         return f"{provider or 'OAuth'} connection failed."
     return "OAuth flow failed."
 
@@ -79,6 +122,24 @@ def _dashboard_redirect(platform: str, result: str, message: str, count: int = 0
     if count:
         params["oauth_count"] = str(count)
     return RedirectResponse(f"{settings.frontend_url}/?{urlencode(params)}")
+
+
+def _provider_query_error(platform: str, error: Optional[str], error_description: Optional[str]):
+    if error:
+        message = error_description or error.replace("_", " ")
+        return _dashboard_redirect(platform, "error", message)
+    return None
+
+
+def _store_verifier(nonce: str, verifier: str) -> None:
+    redis_client.setex(f"pkce:twitter:{nonce}", 600, verifier)
+
+
+def _pop_verifier(nonce: str) -> Optional[str]:
+    key = f"pkce:twitter:{nonce}"
+    verifier = redis_client.get(key)
+    redis_client.delete(key)
+    return verifier
 
 
 @router.get("/facebook/login")
@@ -95,8 +156,18 @@ def facebook_login(tenant_id: str = Query(...)):
 
 
 @router.get("/facebook/callback")
-def facebook_callback(code: str = Query(...), state: str = Query(...)):
+def facebook_callback(
+    state: str = Query(...),
+    code: Optional[str] = Query(default=None),
+    error: Optional[str] = Query(default=None),
+    error_description: Optional[str] = Query(default=None),
+):
     tenant_id = _extract_tenant_from_state(state)
+    provider_error = _provider_query_error("facebook", error, error_description)
+    if provider_error is not None:
+        return provider_error
+    if not code:
+        return _dashboard_redirect("facebook", "error", "Facebook did not return an authorization code.")
 
     try:
         token_params = {
@@ -152,8 +223,22 @@ def instagram_login(tenant_id: str = Query(...)):
 
 
 @router.get("/instagram/callback")
-def instagram_callback(code: str = Query(...), state: str = Query(...)):
+def instagram_callback(
+    state: str = Query(...),
+    code: Optional[str] = Query(default=None),
+    error: Optional[str] = Query(default=None),
+    error_description: Optional[str] = Query(default=None),
+):
     tenant_id = _extract_tenant_from_state(state)
+    provider_error = _provider_query_error("instagram", error, error_description)
+    if provider_error is not None:
+        return provider_error
+    if not code:
+        return _dashboard_redirect(
+            "instagram",
+            "error",
+            "Instagram did not return an authorization code.",
+        )
 
     try:
         token_params = {
@@ -226,15 +311,29 @@ def linkedin_login(tenant_id: str = Query(...)):
         "client_id": settings.LINKEDIN_CLIENT_ID,
         "redirect_uri": settings.linkedin_redirect_uri,
         "state": state,
-        "scope": "r_liteprofile w_member_social",
+        "scope": "openid profile email w_member_social",  # replaced r_liteprofile
     }
     url = "https://www.linkedin.com/oauth/v2/authorization?{0}".format(urlencode(params))
     return RedirectResponse(url)
 
 
 @router.get("/linkedin/callback")
-def linkedin_callback(code: str = Query(...), state: str = Query(...)):
+def linkedin_callback(
+    state: str = Query(...),
+    code: Optional[str] = Query(default=None),
+    error: Optional[str] = Query(default=None),
+    error_description: Optional[str] = Query(default=None),
+):
     tenant_id = _extract_tenant_from_state(state)
+    provider_error = _provider_query_error("linkedin", error, error_description)
+    if provider_error is not None:
+        return provider_error
+    if not code:
+        return _dashboard_redirect(
+            "linkedin",
+            "error",
+            "LinkedIn did not return an authorization code.",
+        )
 
     try:
         data = {
@@ -255,8 +354,9 @@ def linkedin_callback(code: str = Query(...), state: str = Query(...)):
         token_data = token_response.json()
         access_token = token_data["access_token"]
 
+        # switched from /v2/me to /v2/userinfo (OpenID Connect endpoint)
         profile_response = requests.get(
-            "https://api.linkedin.com/v2/me",
+            "https://api.linkedin.com/v2/userinfo",
             headers={"Authorization": "Bearer {0}".format(access_token)},
             timeout=30,
         )
@@ -264,18 +364,18 @@ def linkedin_callback(code: str = Query(...), state: str = Query(...)):
             _raise_provider_error("linkedin", profile_response)
 
         profile = profile_response.json()
+        # /v2/userinfo returns "sub" instead of "id"
         account = save_social_account(
             tenant_id=tenant_id,
             platform="linkedin",
-            platform_account_id=profile["id"],
-            account_name="LinkedIn Profile",
+            platform_account_id=profile["sub"],
+            account_name=profile.get("name", "LinkedIn Profile"),
             access_token=access_token,
             account_type="personal_profile",
         )
         return _dashboard_redirect("linkedin", "success", "Connected your LinkedIn profile.", 1)
     except HTTPException as exc:
         return _dashboard_redirect("linkedin", "error", _detail_message(exc.detail))
-
 
 @router.get("/google/login")
 def google_login(tenant_id: str = Query(...)):
@@ -295,8 +395,18 @@ def google_login(tenant_id: str = Query(...)):
 
 
 @router.get("/google/callback")
-def google_callback(code: str = Query(...), state: str = Query(...)):
+def google_callback(
+    state: str = Query(...),
+    code: Optional[str] = Query(default=None),
+    error: Optional[str] = Query(default=None),
+    error_description: Optional[str] = Query(default=None),
+):
     tenant_id = _extract_tenant_from_state(state)
+    provider_error = _provider_query_error("youtube", error, error_description)
+    if provider_error is not None:
+        return provider_error
+    if not code:
+        return _dashboard_redirect("youtube", "error", "Google did not return an authorization code.")
 
     try:
         data = {
@@ -355,10 +465,12 @@ def google_callback(code: str = Query(...), state: str = Query(...)):
 @router.get("/twitter/login")
 def twitter_login(tenant_id: str = Query(...)):
     state = _build_state(tenant_id)
+    _, nonce = _extract_tenant_and_nonce_from_state(state)
     verifier = secrets.token_urlsafe(48)
     challenge = base64.urlsafe_b64encode(
         hashlib.sha256(verifier.encode("utf-8")).digest()
     ).decode("utf-8").rstrip("=")
+    _store_verifier(nonce, verifier)
 
     params = {
         "response_type": "code",
@@ -370,46 +482,46 @@ def twitter_login(tenant_id: str = Query(...)):
         "code_challenge_method": "S256",
     }
 
-    url = "https://twitter.com/i/oauth2/authorize?{0}".format(urlencode(params))
-    response = RedirectResponse(url)
-    response.set_cookie(
-        key="twitter_code_verifier",
-        value=verifier,
-        httponly=True,
-        secure=settings.backend_public_url.startswith("https://"),
-        samesite="lax",
-        max_age=600,
-    )
-    return response
+    url = "https://x.com/i/oauth2/authorize?{0}".format(urlencode(params))
+    return RedirectResponse(url)
+
 
 @router.get("/twitter/callback")
 def twitter_callback(
-    code: str = Query(...),
     state: str = Query(...),
-    twitter_code_verifier: str = Cookie(default=None),
+    code: Optional[str] = Query(default=None),
+    error: Optional[str] = Query(default=None),
+    error_description: Optional[str] = Query(default=None),
 ):
-    tenant_id = _extract_tenant_from_state(state)
+    tenant_id, nonce = _extract_tenant_and_nonce_from_state(state)
+
+    provider_error = _provider_query_error("twitter", error, error_description)
+    if provider_error is not None:
+        return provider_error
+    if not code:
+        return _dashboard_redirect("twitter", "error", "X did not return an authorization code.")
 
     try:
-        verifier = twitter_code_verifier
+        verifier = _pop_verifier(nonce)
         if not verifier:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Missing Twitter code verifier",
-            )
+            return _dashboard_redirect("twitter", "error", "Missing Twitter code verifier.")
 
-        data = {
-            "grant_type": "authorization_code",
-            "code": code,
-            "redirect_uri": settings.twitter_redirect_uri,
-            "client_id": settings.TWITTER_CLIENT_ID,
-            "code_verifier": verifier,
-        }
+        basic_token = base64.b64encode(
+            f"{settings.TWITTER_CLIENT_ID}:{settings.TWITTER_CLIENT_SECRET}".encode("utf-8")
+        ).decode("utf-8")
 
         token_response = requests.post(
-            "https://api.twitter.com/2/oauth2/token",
-            data=data,
-            auth=(settings.TWITTER_CLIENT_ID, settings.TWITTER_CLIENT_SECRET),
+            "https://api.x.com/2/oauth2/token",
+            data={
+                "grant_type": "authorization_code",
+                "code": code,
+                "redirect_uri": settings.twitter_redirect_uri,
+                "code_verifier": verifier,
+            },
+            headers={
+                "Authorization": f"Basic {basic_token}",
+                "Content-Type": "application/x-www-form-urlencoded",
+            },
             timeout=30,
         )
         if not token_response.ok:
@@ -419,7 +531,7 @@ def twitter_callback(
         access_token = token_data["access_token"]
 
         user_response = requests.get(
-            "https://api.twitter.com/2/users/me",
+            "https://api.x.com/2/users/me",
             headers={"Authorization": "Bearer {0}".format(access_token)},
             timeout=30,
         )
@@ -439,10 +551,7 @@ def twitter_callback(
             account_type="personal_or_brand",
         )
 
-        response = _dashboard_redirect("twitter", "success", "Connected your X account.", 1)
-        response.delete_cookie("twitter_code_verifier")
-        return response
+        return _dashboard_redirect("twitter", "success", "Connected your X account.", 1)
     except HTTPException as exc:
-        response = _dashboard_redirect("twitter", "error", _detail_message(exc.detail))
-        response.delete_cookie("twitter_code_verifier")
-        return response
+        logger.error("oauth.twitter_callback_failed detail=%s", exc.detail)
+        return _dashboard_redirect("twitter", "error", _detail_message(exc.detail))

@@ -29,6 +29,9 @@ def _extract_bearer_token(authorization: Optional[str]) -> Optional[str]:
 
 
 async def jwt_context_middleware(request: Request, call_next):
+    if request.method == "OPTIONS":
+        return await call_next(request)
+
     settings = get_settings()
     token = _extract_bearer_token(request.headers.get("Authorization"))
     current_user: Optional[CurrentUser] = None

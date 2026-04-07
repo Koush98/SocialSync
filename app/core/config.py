@@ -103,7 +103,11 @@ class Settings(BaseSettings):
         )
 
     def cors_origins(self) -> List[str]:
-        origins = [self.frontend_url]
+        origins = [
+            self.frontend_url,
+            "http://localhost:3000",  # Next.js dev server
+            "http://127.0.0.1:3000",  # Next.js dev server (alternative)
+        ]
         extra_origins = [
             origin.strip()
             for origin in self.ADDITIONAL_CORS_ORIGINS.split(",")

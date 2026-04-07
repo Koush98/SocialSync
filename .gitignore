@@ -16,3 +16,13 @@ wheels/
 .mypy_cache/
 frontend/node_modules/
 frontend/.next/
+
+# Large files (GitHub limit: 100MB)
+*.zip
+app.zip
+frontend.zip
+*.mp4
+*.mov
+*.avi
+*.mkv
+*.webm

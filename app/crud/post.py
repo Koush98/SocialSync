@@ -15,6 +15,36 @@ def _is_future_timestamp(value):
     return value > datetime.now(timezone.utc)
 
 
+def _reload_post(db: Session, tenant_id: str, post_id: int):
+    return (
+        db.query(ScheduledPost)
+        .filter(
+            ScheduledPost.id == post_id,
+            ScheduledPost.tenant_id == tenant_id,
+        )
+        .first()
+    )
+
+
+def _validate_media_ids(db: Session, tenant_id: str, media_ids):
+    media_ids = media_ids or []
+    if not media_ids:
+        return []
+
+    valid_media_ids = {
+        media.id
+        for media in (
+            db.query(MediaAsset)
+            .filter(MediaAsset.tenant_id == tenant_id, MediaAsset.id.in_(media_ids))
+            .all()
+        )
+    }
+    missing_media = [media_id for media_id in media_ids if media_id not in valid_media_ids]
+    if missing_media:
+        raise ValueError(f"Invalid media IDs: {missing_media}")
+    return media_ids
+
+
 def create_post(db: Session, tenant_id: str, data):
     account = db.query(SocialAccount).filter_by(
         id=data.social_account_id,
@@ -22,7 +52,9 @@ def create_post(db: Session, tenant_id: str, data):
     ).first()
 
     if not account:
-        raise Exception("Invalid account")
+        raise ValueError("Invalid account")
+
+    media_ids = _validate_media_ids(db, tenant_id, data.media_ids or [])
 
     desired_status = "scheduled" if _is_future_timestamp(data.scheduled_at) else "queued"
 
@@ -37,12 +69,19 @@ def create_post(db: Session, tenant_id: str, data):
 
     db.add(post)
     db.flush()
+    post_id = post.id
+    for index, media_id in enumerate(media_ids):
+        db.add(
+            PostMedia(
+                tenant_id=tenant_id,
+                post_id=post_id,
+                media_asset_id=media_id,
+                display_order=index,
+            )
+        )
     post.status = desired_status
     db.commit()
-    db.refresh(post)
-
-    _replace_post_media(db, tenant_id, post.id, data.media_ids or [])
-    _attach_media_ids(db, [post])
+    post.media_ids = media_ids
     return post
 
 
@@ -90,13 +129,14 @@ def update_post(db: Session, tenant_id: str, post_id: int, data):
     post.status = desired_status
     post.error_message = None
     post.updated_at = datetime.utcnow()
+    post_id = post.id
     db.commit()
-    db.refresh(post)
 
     if "media_ids" in data.model_fields_set:
-        _replace_post_media(db, tenant_id, post.id, data.media_ids)
-
-    _attach_media_ids(db, [post])
+        media_ids = _replace_post_media(db, tenant_id, post_id, data.media_ids)
+        post.media_ids = media_ids
+    else:
+        _attach_media_ids(db, [post])
     return post
 
 
@@ -115,25 +155,12 @@ def update_post_status(
     post.error_message = error_message
     post.updated_at = datetime.utcnow()
     db.commit()
-    db.refresh(post)
     _attach_media_ids(db, [post])
     return post
 
 
 def _replace_post_media(db: Session, tenant_id: str, post_id: int, media_ids):
-    media_ids = media_ids or []
-    if media_ids:
-        valid_media_ids = {
-            media.id
-            for media in (
-                db.query(MediaAsset)
-                .filter(MediaAsset.tenant_id == tenant_id, MediaAsset.id.in_(media_ids))
-                .all()
-            )
-        }
-        missing_media = [media_id for media_id in media_ids if media_id not in valid_media_ids]
-        if missing_media:
-            raise ValueError(f"Invalid media IDs: {missing_media}")
+    media_ids = _validate_media_ids(db, tenant_id, media_ids)
 
     db.query(PostMedia).filter(
         PostMedia.post_id == post_id,
@@ -151,10 +178,11 @@ def _replace_post_media(db: Session, tenant_id: str, post_id: int, media_ids):
         )
 
     db.commit()
+    return media_ids
 
 
 def _attach_media_ids(db: Session, posts):
-    posts = list(posts or [])
+    posts = [post for post in (posts or []) if post is not None]
     if not posts:
         return
 

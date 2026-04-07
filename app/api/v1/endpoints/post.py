@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from app.schemas.post import PostCreate, PostCreateResponse, PostRead, PostUpdate
 from app.crud.post import create_post, get_post, list_posts, update_post, update_post_status
 from app.utils.deps import get_db, get_tenant
+from app.worker.celery_app import celery_app
 
 router = APIRouter()
 
@@ -24,13 +25,27 @@ def create(
     db: Session = Depends(get_db),
     tenant_id: str = Depends(get_tenant),
 ):
-    post = create_post(db, tenant_id, data)
+    try:
+        post = create_post(db, tenant_id, data)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        ) from exc
+
     task = None
 
     if _is_future_timestamp(post.scheduled_at):
-        task = publish_post_task.apply_async(args=[post.id, tenant_id], eta=post.scheduled_at)
+        task = celery_app.send_task(
+            "app.worker.tasks.publish_post_task",
+            args=[post.id, tenant_id],
+            eta=post.scheduled_at,
+        )
     else:
-        task = publish_post_task.delay(post.id, tenant_id)
+        task = celery_app.send_task(
+            "app.worker.tasks.publish_post_task",
+            args=[post.id, tenant_id],
+        )
 
     return {"post_id": post.id, "status": post.status, "task_id": task.id if task else None}
 
@@ -82,9 +97,16 @@ def edit_post(
 
     task = None
     if post.status == "scheduled":
-        task = publish_post_task.apply_async(args=[post.id, tenant_id], eta=post.scheduled_at)
+        task = celery_app.send_task(
+            "app.worker.tasks.publish_post_task",
+            args=[post.id, tenant_id],
+            eta=post.scheduled_at,
+        )
     elif post.status == "queued":
-        task = publish_post_task.delay(post.id, tenant_id)
+        task = celery_app.send_task(
+            "app.worker.tasks.publish_post_task",
+            args=[post.id, tenant_id],
+        )
 
     return {"post_id": post.id, "status": post.status, "task_id": task.id if task else None}
 
@@ -102,9 +124,12 @@ def publish_now(
             detail="Post not found",
         )
 
-    update_post_status(db, tenant_id, post_id, "queued", None)
-    task = publish_post_task.delay(post.id, tenant_id)
-    return {"post_id": post.id, "status": "queued", "task_id": task.id}
+    updated_post = update_post_status(db, tenant_id, post_id, "queued", None)
+    task = celery_app.send_task(
+        "app.worker.tasks.publish_post_task",
+        args=[post_id, tenant_id],
+    )
+    return {"post_id": post_id, "status": updated_post.status if updated_post else "queued", "task_id": task.id}
 
 
 @router.post("/{post_id}/cancel", response_model=PostCreateResponse)
@@ -120,9 +145,7 @@ def cancel_post(
             detail="Post not found",
         )
 
-    update_post_status(db, tenant_id, post_id, "cancelled", None)
-    return {"post_id": post.id, "status": "cancelled", "task_id": None}
+    updated_post = update_post_status(db, tenant_id, post_id, "cancelled", None)
+    return {"post_id": post_id, "status": updated_post.status if updated_post else "cancelled", "task_id": None}
 
-
-from app.worker.tasks import publish_post_task
 
