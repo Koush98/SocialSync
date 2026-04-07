@@ -31,14 +31,23 @@ def create(
     # Extract request_id from middleware
     request_id = getattr(request.state, "request_id", "N/A")
     
+    # Get platform from social account
+    from app.models.social_account import SocialAccount
+    account = db.query(SocialAccount).filter_by(
+        id=data.social_account_id,
+        tenant_id=tenant_id
+    ).first()
+    platform = account.platform if account else "unknown"
+    
     log_event(
         logger, "info", "post.create_request",
         request_id=request_id,
         step="api_endpoint",
         extra={
-            "platform": data.platform,
+            "platform": platform,
             "content_preview": data.content[:50] if data.content else "",
             "scheduled_at": str(data.scheduled_at) if data.scheduled_at else "immediate",
+            "account_id": data.social_account_id,
         }
     )
     
