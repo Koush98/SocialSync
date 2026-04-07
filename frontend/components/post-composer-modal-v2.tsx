@@ -4,6 +4,7 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 
 import { createPost, fetchAccounts, fetchMedia, uploadMedia } from "@/lib/api";
 import { Account, MediaAsset, PlatformName } from "@/lib/types";
+import { PlatformLogo } from "@/components/platform-logo";
 
 type Props = { open: boolean; onClose: () => void; onCreated?: () => Promise<void> | void };
 
@@ -30,22 +31,7 @@ function SuccessIcon() {
   );
 }
 
-// Platform icon with hover animation
-function PlatformIcon({ platform, enabled }: { platform: PlatformName; enabled: boolean }) {
-  const icons: Record<PlatformName, string> = {
-    facebook: "📘",
-    instagram: "📷",
-    linkedin: "💼",
-    twitter: "🐦",
-    youtube: "🎥",
-  };
-
-  return (
-    <span className={`inline-block text-xl transition-transform duration-200 ${enabled ? "scale-110" : "group-hover:scale-105"}`}>
-      {icons[platform]}
-    </span>
-  );
-}
+// Platform icon with hover animation`nfunction PlatformIcon({ platform, enabled }: { platform: PlatformName; enabled: boolean }) {`n  return (`n    <div className={`transition-transform duration-200 ${enabled ? "scale-110" : "group-hover:scale-105"}`}>`n      <PlatformLogo platform={platform} className="h-6 w-6" />`n    </div>`n  );`n}
 type Config = {
   enabled: boolean;
   accountId: number | null;
