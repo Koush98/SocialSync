@@ -3,44 +3,93 @@ import hashlib
 import secrets
 from typing import Optional
 from urllib.parse import urlencode
-from fastapi import APIRouter, HTTPException, Query, status
+from fastapi import APIRouter, HTTPException, Query, Request, status
 
 import requests
 from fastapi.responses import RedirectResponse
-
+import json
+import time
 from app.core.config import get_settings
 from app.core.logging import get_logger
 from app.core.redis_client import redis_client
 from app.services.oauth_service import save_social_account
+
+from fastapi import Depends
+from app.utils.deps import get_current_user
+
+
 
 router = APIRouter()
 settings = get_settings()
 logger = get_logger("app.oauth")
 
 
-def _build_state(tenant_id: str):
-    nonce = secrets.token_urlsafe(16)
-    return "{0}:{1}".format(tenant_id, nonce)
+# ── state helpers ───────────────────────────────────────────────────────
 
 
-def _extract_tenant_and_nonce_from_state(state: str):
-    if not state or ":" not in state:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid OAuth state",
-        )
-    tenant_id, nonce = state.split(":", 1)
-    if not tenant_id or not nonce:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid OAuth state",
-        )
-    return tenant_id, nonce
+def _build_state(tenant_id: str, user_id: str):
+    payload = {
+        "tenant_id": tenant_id,
+        "user_id": user_id,
+        "nonce": secrets.token_urlsafe(16),
+        "exp": int(time.time()) + 600  # 10 min expiry
+    }
+
+    encoded = base64.urlsafe_b64encode(json.dumps(payload).encode()).decode()
+
+    # store nonce in Redis (anti-replay)
+    redis_client.setex(f"oauth_state:{payload['nonce']}", 600, "1")
+
+    return encoded
 
 
-def _extract_tenant_from_state(state: str):
-    tenant_id, _ = _extract_tenant_and_nonce_from_state(state)
-    return tenant_id
+def _validate_and_extract_state(state: str):
+    try:
+        decoded = json.loads(base64.urlsafe_b64decode(state.encode()).decode())
+
+        tenant_id = decoded["tenant_id"]
+        user_id = decoded["user_id"]
+        nonce = decoded["nonce"]
+        exp = decoded["exp"]
+
+        # expiry check
+        if time.time() > exp:
+            raise HTTPException(status_code=400, detail="State expired")
+
+        # nonce check (anti-replay)
+        if not redis_client.get(f"oauth_state:{nonce}"):
+            raise HTTPException(status_code=400, detail="Invalid state")
+
+        redis_client.delete(f"oauth_state:{nonce}")
+
+        return tenant_id, user_id
+
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid OAuth state")
+
+
+# ── request.state → tenant / user helpers ───────────────────────────────
+
+
+def _get_tenant_and_user(request: Request):
+    """Extract tenant_id and user_id from the JWT-populated request context."""
+    context = getattr(request.state, "request_context", None)
+
+    tenant_id = getattr(context, "tenant_id", None) if context else None
+    user_id = getattr(context, "user_id", None) if context else None
+
+    if not tenant_id:
+        raise HTTPException(status_code=400, detail="Missing tenant context")
+
+    if not user_id:
+        user_id = "anonymous"
+
+    return tenant_id, user_id
+
+
+# ── page / error helpers ───────────────────────────────────────────────
 
 
 def _page_accounts(access_token: str):
@@ -142,9 +191,23 @@ def _pop_verifier(nonce: str) -> Optional[str]:
     return verifier
 
 
+# ── Facebook ────────────────────────────────────────────────────────────
+
 @router.get("/facebook/login")
-def facebook_login(tenant_id: str = Query(...)):
-    state = _build_state(tenant_id)
+def facebook_login(
+    request: Request,
+    user=Depends(get_current_user)   # ✅ ADD THIS
+):
+    tenant_id, user_id = _get_tenant_and_user(request)
+
+    logger.info(
+        "oauth.login.start tenant=%s user=%s provider=facebook",
+        tenant_id,
+        user_id
+    )
+
+    state = _build_state(tenant_id, user_id)
+
     params = {
         "client_id": settings.FACEBOOK_CLIENT_ID,
         "redirect_uri": settings.facebook_redirect_uri,
@@ -162,7 +225,8 @@ def facebook_callback(
     error: Optional[str] = Query(default=None),
     error_description: Optional[str] = Query(default=None),
 ):
-    tenant_id = _extract_tenant_from_state(state)
+    tenant_id, user_id = _validate_and_extract_state(state)
+
     provider_error = _provider_query_error("facebook", error, error_description)
     if provider_error is not None:
         return provider_error
@@ -200,6 +264,13 @@ def facebook_callback(
             )
             saved_accounts.append(account)
 
+        logger.info(
+            "oauth.callback.success tenant=%s user=%s provider=facebook accounts=%s",
+            tenant_id,
+            user_id,
+            len(saved_accounts)
+        )
+
         message = (
             f"Connected {len(saved_accounts)} Facebook page"
             f"{'' if len(saved_accounts) == 1 else 's'}."
@@ -209,9 +280,23 @@ def facebook_callback(
         return _dashboard_redirect("facebook", "error", _detail_message(exc.detail))
 
 
+# ── Instagram ───────────────────────────────────────────────────────────
+
 @router.get("/instagram/login")
-def instagram_login(tenant_id: str = Query(...)):
-    state = _build_state(tenant_id)
+def instagram_login(
+    request: Request,
+    user=Depends(get_current_user)   # ✅ ADD THIS
+):
+    tenant_id, user_id = _get_tenant_and_user(request)
+
+    logger.info(
+        "oauth.login.start tenant=%s user=%s provider=instagram",
+        tenant_id,
+        user_id
+    )
+
+    state = _build_state(tenant_id, user_id)
+
     params = {
         "client_id": settings.FACEBOOK_CLIENT_ID,
         "redirect_uri": settings.instagram_redirect_uri,
@@ -221,7 +306,6 @@ def instagram_login(tenant_id: str = Query(...)):
     url = "https://www.facebook.com/v18.0/dialog/oauth?{0}".format(urlencode(params))
     return RedirectResponse(url)
 
-
 @router.get("/instagram/callback")
 def instagram_callback(
     state: str = Query(...),
@@ -229,7 +313,8 @@ def instagram_callback(
     error: Optional[str] = Query(default=None),
     error_description: Optional[str] = Query(default=None),
 ):
-    tenant_id = _extract_tenant_from_state(state)
+    tenant_id, user_id = _validate_and_extract_state(state)
+
     provider_error = _provider_query_error("instagram", error, error_description)
     if provider_error is not None:
         return provider_error
@@ -294,6 +379,13 @@ def instagram_callback(
                 detail="Instagram requires a Business or Creator account linked to one of the authenticated Facebook Pages.",
             )
 
+        logger.info(
+            "oauth.callback.success tenant=%s user=%s provider=instagram accounts=%s",
+            tenant_id,
+            user_id,
+            len(saved_accounts)
+        )
+
         message = (
             f"Connected {len(saved_accounts)} Instagram professional account"
             f"{'' if len(saved_accounts) == 1 else 's'}."
@@ -303,19 +395,36 @@ def instagram_callback(
         return _dashboard_redirect("instagram", "error", _detail_message(exc.detail))
 
 
+# ── LinkedIn ────────────────────────────────────────────────────────────
+
+
+from fastapi import Depends
+from app.utils.deps import get_current_user
+
 @router.get("/linkedin/login")
-def linkedin_login(tenant_id: str = Query(...)):
-    state = _build_state(tenant_id)
+def linkedin_login(
+    request: Request,
+    user=Depends(get_current_user)   # ✅ ADD THIS
+):
+    tenant_id, user_id = _get_tenant_and_user(request)
+
+    logger.info(
+        "oauth.login.start tenant=%s user=%s provider=linkedin",
+        tenant_id,
+        user_id
+    )
+
+    state = _build_state(tenant_id, user_id)
+
     params = {
         "response_type": "code",
         "client_id": settings.LINKEDIN_CLIENT_ID,
         "redirect_uri": settings.linkedin_redirect_uri,
         "state": state,
-        "scope": "openid profile email w_member_social",  # replaced r_liteprofile
+        "scope": "openid profile email w_member_social",
     }
     url = "https://www.linkedin.com/oauth/v2/authorization?{0}".format(urlencode(params))
     return RedirectResponse(url)
-
 
 @router.get("/linkedin/callback")
 def linkedin_callback(
@@ -324,7 +433,8 @@ def linkedin_callback(
     error: Optional[str] = Query(default=None),
     error_description: Optional[str] = Query(default=None),
 ):
-    tenant_id = _extract_tenant_from_state(state)
+    tenant_id, user_id = _validate_and_extract_state(state)
+
     provider_error = _provider_query_error("linkedin", error, error_description)
     if provider_error is not None:
         return provider_error
@@ -373,13 +483,37 @@ def linkedin_callback(
             access_token=access_token,
             account_type="personal_profile",
         )
+
+        logger.info(
+            "oauth.callback.success tenant=%s user=%s provider=linkedin accounts=%s",
+            tenant_id,
+            user_id,
+            1
+        )
+
         return _dashboard_redirect("linkedin", "success", "Connected your LinkedIn profile.", 1)
     except HTTPException as exc:
         return _dashboard_redirect("linkedin", "error", _detail_message(exc.detail))
 
+
+# ── Google / YouTube ────────────────────────────────────────────────────
+
+
 @router.get("/google/login")
-def google_login(tenant_id: str = Query(...)):
-    state = _build_state(tenant_id)
+def google_login(
+    request: Request,
+    user=Depends(get_current_user)   # ✅ ADD THIS
+):
+    tenant_id, user_id = _get_tenant_and_user(request)
+
+    logger.info(
+        "oauth.login.start tenant=%s user=%s provider=youtube",
+        tenant_id,
+        user_id
+    )
+
+    state = _build_state(tenant_id, user_id)
+
     params = {
         "client_id": settings.GOOGLE_CLIENT_ID,
         "redirect_uri": settings.google_redirect_uri,
@@ -388,11 +522,9 @@ def google_login(tenant_id: str = Query(...)):
         "prompt": "consent",
         "state": state,
         "scope": "https://www.googleapis.com/auth/youtube.upload https://www.googleapis.com/auth/youtube.readonly",
-
     }
     url = "https://accounts.google.com/o/oauth2/v2/auth?{0}".format(urlencode(params))
     return RedirectResponse(url)
-
 
 @router.get("/google/callback")
 def google_callback(
@@ -401,7 +533,8 @@ def google_callback(
     error: Optional[str] = Query(default=None),
     error_description: Optional[str] = Query(default=None),
 ):
-    tenant_id = _extract_tenant_from_state(state)
+    tenant_id, user_id = _validate_and_extract_state(state)
+
     provider_error = _provider_query_error("youtube", error, error_description)
     if provider_error is not None:
         return provider_error
@@ -457,15 +590,39 @@ def google_callback(
             profile_picture_url=(channel_snippet.get("thumbnails", {}).get("default") or {}).get("url"),
         )
 
+        logger.info(
+            "oauth.callback.success tenant=%s user=%s provider=youtube accounts=%s",
+            tenant_id,
+            user_id,
+            1
+        )
+
         return _dashboard_redirect("youtube", "success", "Connected your YouTube channel.", 1)
     except HTTPException as exc:
         return _dashboard_redirect("youtube", "error", _detail_message(exc.detail))
 
 
+# ── Twitter / X ─────────────────────────────────────────────────────────
+
 @router.get("/twitter/login")
-def twitter_login(tenant_id: str = Query(...)):
-    state = _build_state(tenant_id)
-    _, nonce = _extract_tenant_and_nonce_from_state(state)
+def twitter_login(
+    request: Request,
+    user=Depends(get_current_user)   # ✅ ADD THIS LINE
+):
+    tenant_id, user_id = _get_tenant_and_user(request)
+
+    logger.info(
+        "oauth.login.start tenant=%s user=%s provider=twitter",
+        tenant_id,
+        user_id
+    )
+
+    state = _build_state(tenant_id, user_id)
+
+    # extract nonce from the state we just built (for PKCE verifier storage)
+    decoded = json.loads(base64.urlsafe_b64decode(state.encode()).decode())
+    nonce = decoded["nonce"]
+
     verifier = secrets.token_urlsafe(48)
     challenge = base64.urlsafe_b64encode(
         hashlib.sha256(verifier.encode("utf-8")).digest()
@@ -485,7 +642,6 @@ def twitter_login(tenant_id: str = Query(...)):
     url = "https://x.com/i/oauth2/authorize?{0}".format(urlencode(params))
     return RedirectResponse(url)
 
-
 @router.get("/twitter/callback")
 def twitter_callback(
     state: str = Query(...),
@@ -493,7 +649,11 @@ def twitter_callback(
     error: Optional[str] = Query(default=None),
     error_description: Optional[str] = Query(default=None),
 ):
-    tenant_id, nonce = _extract_tenant_and_nonce_from_state(state)
+    tenant_id, user_id = _validate_and_extract_state(state)
+
+    # decode nonce after validation (safe version)
+    decoded = json.loads(base64.urlsafe_b64decode(state.encode()).decode())
+    nonce = decoded["nonce"]
 
     provider_error = _provider_query_error("twitter", error, error_description)
     if provider_error is not None:
@@ -549,6 +709,13 @@ def twitter_callback(
             refresh_token=token_data.get("refresh_token"),
             expires_in=token_data.get("expires_in"),
             account_type="personal_or_brand",
+        )
+
+        logger.info(
+            "oauth.callback.success tenant=%s user=%s provider=twitter accounts=%s",
+            tenant_id,
+            user_id,
+            1
         )
 
         return _dashboard_redirect("twitter", "success", "Connected your X account.", 1)

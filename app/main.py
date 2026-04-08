@@ -29,6 +29,13 @@ app = FastAPI(
     version="1.0.0",
     lifespan=lifespan,
     openapi_url=f"{get_settings().API_V1_STR}/openapi.json",
+    swagger_ui_init_oauth={
+        "clientId": get_settings().GOOGLE_CLIENT_ID,
+        "clientSecret": get_settings().GOOGLE_SECRET,
+        "scopes": "openid email profile",
+        "appName": get_settings().PROJECT_NAME,
+    },
+    swagger_ui_oauth2_redirect_url="/docs/oauth2-redirect",
 )
 
 settings = get_settings()
@@ -43,6 +50,27 @@ app.add_middleware(
 
 
 app.middleware("http")(jwt_context_middleware)
+
+
+
+
+from app.api.v1.api import api_router
+from fastapi.security import OAuth2PasswordBearer
+
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/oauth/token") # This should point to your token endpoint
+
+app.include_router(api_router, prefix=get_settings().API_V1_STR)
+
+
+
+
+@app.get("/")
+async def root():
+    return {
+        "message": "Welcome to SocialSync API",
+        "docs": "/docs"
+    }
 
 
 @app.middleware("http")
@@ -114,16 +142,3 @@ async def request_id_middleware(request: Request, call_next):
                 "request_id": request_id,  # User can report this for debugging
             },
         )
-
-
-from app.api.v1.api import api_router
-
-app.include_router(api_router, prefix=get_settings().API_V1_STR)
-
-
-@app.get("/")
-async def root():
-    return {
-        "message": "Welcome to SocialSync API",
-        "docs": "/docs"
-    }

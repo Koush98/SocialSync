@@ -12,21 +12,22 @@ RUN apt-get update && apt-get install -y \
 
 # Install uv
 RUN curl -LsSf https://astral.sh/uv/install.sh | sh
-
 ENV PATH="/root/.local/bin:$PATH"
 
 # Copy project files
 COPY . .
 
-# Install dependencies using uv
-RUN uv sync --frozen
+# Install dependencies
+RUN uv sync --frozen --no-dev
+
+# Ensure alembic is available
+RUN uv pip install alembic
 
 # Make wait script executable
 COPY wait-for-db.sh .
 RUN chmod +x wait-for-db.sh
 
-# Expose port
 EXPOSE 8000
 
-# Default command (will be overridden in docker-compose)
-CMD ["sh", "-c", "./wait-for-db.sh && uv run uvicorn app.main:app --host 0.0.0.0 --port 8000"]
+# Auto run migration + start server (Best Practice)
+CMD ["uv", "run", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

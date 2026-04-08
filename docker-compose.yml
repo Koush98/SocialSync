@@ -12,8 +12,12 @@ services:
         condition: service_started
     volumes:
       - .:/app
-    command: sh -c "./wait-for-db.sh && uv run uvicorn app.main:app --host 0.0.0.0 --port 8000"
-
+    command: >
+      sh -c '
+      ./wait-for-db.sh &&
+      uv run alembic upgrade head || true &&
+      uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+      '
 
   worker:
     build: .
@@ -24,8 +28,9 @@ services:
         condition: service_healthy
       redis:
         condition: service_started
+    volumes:
+      - .:/app
     command: uv run celery -A app.worker.celery_app.celery_app worker --loglevel=info -E -Q default
-
 
   beat:
     build: .
@@ -36,18 +41,14 @@ services:
         condition: service_healthy
       redis:
         condition: service_started
+    volumes:
+      - .:/app
     command: uv run celery -A app.worker.celery_app.celery_app beat --loglevel=info
-
 
   flower:
     build: .
     container_name: socialsync_flower
     env_file: .env
-    command: >
-      sh -c "
-        sleep 15 &&
-        uv run celery -A app.worker.celery_app.celery_app --broker=redis://redis:6379/0 flower --port=5555
-      "
     ports:
       - "5555:5555"
     depends_on:
@@ -55,6 +56,9 @@ services:
         condition: service_started
       worker:
         condition: service_started
+    command: >
+      sh -c "sleep 15 && 
+             uv run celery -A app.worker.celery_app.celery_app flower --port=5555"
     environment:
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
@@ -98,3 +102,4 @@ services:
 volumes:
   postgres_data:
   redis_data:
+  

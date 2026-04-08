@@ -45,7 +45,7 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7  # 7 days
 
     # Auth / JWT
-    AUTH_REQUIRED: bool = False
+    AUTH_REQUIRED: bool = True
     ALLOW_DEV_TENANT_HEADER: bool = True
     JWT_ALGORITHM: str = "HS256"
     JWT_SECRET: Optional[str] = None
