@@ -2,6 +2,7 @@
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
 
+import { ErrorNotice } from "@/components/error-notice";
 import { createPost, fetchAccounts, fetchMedia, uploadMedia } from "@/lib/api";
 import { Account, MediaAsset, PlatformName } from "@/lib/types";
 import { PlatformLogo } from "@/components/platform-logo";
@@ -42,6 +43,7 @@ function PlatformIcon({ platform, enabled }: { platform: PlatformName; enabled: 
 type Config = {
   enabled: boolean;
   accountId: number | null;
+  scheduledAt: string;
   instagramFirstComment: string;
   instagramMode: string;
   linkedinVisibility: string;
@@ -88,6 +90,7 @@ const descriptions: Record<PlatformName, string> = {
 const emptyConfig = (): Config => ({
   enabled: false,
   accountId: null,
+  scheduledAt: "",
   instagramFirstComment: "",
   instagramMode: "feed",
   linkedinVisibility: "PUBLIC",
@@ -193,6 +196,18 @@ function toUtcIsoString(value: string) {
   return date.toISOString();
 }
 
+function formatLocalSchedule(value: string) {
+  if (!value) return "Publish immediately";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleString(undefined, {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
 function platformPayload(platform: PlatformName, config: Config) {
   if (platform === "facebook") return { facebook: { post_as_reel: config.facebookPostAsReel } };
   if (platform === "instagram") {
@@ -227,7 +242,6 @@ export function PostComposerModal({ open, onClose, onCreated }: Props) {
   const [caption, setCaption] = useState("");
   const [hashtags, setHashtags] = useState("");
   const [mentions, setMentions] = useState("");
-  const [scheduledAt, setScheduledAt] = useState("");
   const [altText, setAltText] = useState("");
   const [selectedMediaIds, setSelectedMediaIds] = useState<number[]>([]);
   const [activePlatform, setActivePlatform] = useState<PlatformName>("twitter");
@@ -434,7 +448,7 @@ export function PostComposerModal({ open, onClose, onCreated }: Props) {
           createPost({
             social_account_id: configs[platform].accountId as number,
             content,
-            scheduled_at: toUtcIsoString(scheduledAt),
+            scheduled_at: toUtcIsoString(configs[platform].scheduledAt),
             media_ids: selectedMediaIds,
             platform_options: platformPayload(platform, configs[platform]),
           }),
@@ -445,10 +459,18 @@ export function PostComposerModal({ open, onClose, onCreated }: Props) {
       setCaption("");
       setHashtags("");
       setMentions("");
-      setScheduledAt("");
       setSelectedMediaIds([]);
       setConfigs((current) =>
-        Object.fromEntries(platforms.map((platform) => [platform, { ...current[platform], enabled: false }])) as Record<PlatformName, Config>,
+        Object.fromEntries(
+          platforms.map((platform) => [
+            platform,
+            {
+              ...current[platform],
+              enabled: false,
+              scheduledAt: "",
+            },
+          ]),
+        ) as Record<PlatformName, Config>,
       );
       await onCreated?.();
     } catch (submitError) {
@@ -492,22 +514,17 @@ export function PostComposerModal({ open, onClose, onCreated }: Props) {
                   <span className="font-medium">{message}</span>
                 </div>
               ) : null}
-              {error ? (
-                <div className="rounded-2xl border border-[#f1d3d0] bg-[#fff4f3] px-4 py-4 text-sm text-[#a54848] flex items-center gap-3 animate-fade-in shadow-sm">
-                  <svg className="h-5 w-5 text-red-600 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  <span className="font-medium">{error}</span>
-                </div>
-              ) : null}
+              {error ? <ErrorNotice error={error} fallback="We couldn't create those posts right now." /> : null}
 
               <div className="soft-panel p-5">
                 <label className="mb-3 block text-sm font-semibold text-ink-900">Caption</label>
                 <textarea value={caption} onChange={(event) => setCaption(event.target.value)} placeholder="Write your core post once, then tune each platform in the settings panel." className="field-input min-h-[140px] resize-none" />
-                <div className="mt-4 grid gap-4 md:grid-cols-3">
+                <div className="mt-4 grid gap-4 md:grid-cols-2">
                   <input value={hashtags} onChange={(event) => setHashtags(event.target.value)} placeholder="hashtags" className="field-input" />
                   <input value={mentions} onChange={(event) => setMentions(event.target.value)} placeholder="mentions" className="field-input" />
-                  <input value={scheduledAt} onChange={(event) => setScheduledAt(event.target.value)} type="datetime-local" className="field-input" />
+                </div>
+                <div className="mt-4 rounded-[22px] border border-[#ece2d2] bg-white px-4 py-3 text-sm text-ink-600">
+                  Scheduling is now set per platform in the right-side settings panel so each channel can publish at its own time.
                 </div>
               </div>
 
@@ -606,9 +623,16 @@ export function PostComposerModal({ open, onClose, onCreated }: Props) {
                           </div>
                         </div>
                         <div className="flex items-center justify-between gap-2 pl-8">
-                          <p className={`text-xs ${mediaStateByPlatform[platform].valid ? "text-[#5f7f2e]" : "text-[#b25a4f]"}`}>
-                            {mediaStateByPlatform[platform].message}
-                          </p>
+                          <div className="space-y-1">
+                            <p className={`text-xs ${mediaStateByPlatform[platform].valid ? "text-[#5f7f2e]" : "text-[#b25a4f]"}`}>
+                              {mediaStateByPlatform[platform].message}
+                            </p>
+                            {enabled ? (
+                              <p className="text-[11px] text-ink-500">
+                                {formatLocalSchedule(configs[platform].scheduledAt)}
+                              </p>
+                            ) : null}
+                          </div>
                           {hasAccounts ? (
                             <button 
                               type="button" 
@@ -667,9 +691,8 @@ export function PostComposerModal({ open, onClose, onCreated }: Props) {
                   </div>
                 </div>
 
-                <div className="mb-4 flex rounded-full bg-white p-1">
-                  <button type="button" className="flex-1 rounded-full bg-brand-200 px-4 py-2 text-sm font-semibold text-ink-900">Post</button>
-                  <button type="button" className="flex-1 rounded-full px-4 py-2 text-sm text-ink-500">Advanced</button>
+                <div className="mb-4 rounded-[22px] border border-[#e8decd] bg-white px-4 py-3 text-sm text-ink-600">
+                  Each enabled platform can use its own account, schedule, and publishing options here.
                 </div>
 
                 <div className="space-y-4">
@@ -689,6 +712,19 @@ export function PostComposerModal({ open, onClose, onCreated }: Props) {
                         <option key={account.id} value={account.id}>{account.account_name}</option>
                       ))}
                     </select>
+                  </div>
+
+                  <div>
+                    <label className="mb-2 block text-sm font-semibold text-ink-900">Schedule for {labels[activePlatform]}</label>
+                    <input
+                      type="datetime-local"
+                      value={config.scheduledAt}
+                      onChange={(event) => updateConfig(activePlatform, { scheduledAt: event.target.value })}
+                      className="field-input"
+                    />
+                    <p className="mt-2 text-xs text-ink-500">
+                      Leave blank to publish immediately once the post is created.
+                    </p>
                   </div>
 
                   {activePlatform === "facebook" ? (
@@ -829,6 +865,7 @@ export function PostComposerModal({ open, onClose, onCreated }: Props) {
                     <div className="space-y-2 text-sm text-ink-600">
                       <div>{selectedMediaIds.length} media selected</div>
                       <div>{caption.length} characters in caption</div>
+                      <div>{formatLocalSchedule(config.scheduledAt)}</div>
                       <div className={mediaStateByPlatform[activePlatform].valid ? "text-[#5f7f2e]" : "text-[#b25a4f]"}>
                         {mediaStateByPlatform[activePlatform].message}
                       </div>

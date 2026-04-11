@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 
+import { ErrorNotice } from "@/components/error-notice";
 import { EditPostModal } from "@/components/edit-post-modal-v2";
 import { PostComposerModal } from "@/components/post-composer-modal-v2";
 import { cancelPost, fetchAccounts, fetchPostMetrics, fetchPosts, publishPostNow } from "@/lib/api";
@@ -334,11 +335,7 @@ export default function PostsClient() {
             ))}
           </div>
 
-          {error && (
-            <div className="rounded-2xl border border-[#f1d3d0] bg-[#fff4f3] px-4 py-3 text-sm text-[#a54848]">
-              {error}
-            </div>
-          )}
+          {error ? <ErrorNotice error={error} fallback="We couldn't load the posts queue right now." /> : null}
 
           {/* Filter tabs */}
           <div className="fade-up fade-up-2 flex flex-wrap gap-2">
@@ -421,12 +418,15 @@ export default function PostsClient() {
                               )}
                             </div>
 
-                            {post.error_message && (
-                              <div className="mt-3 flex items-start gap-2 rounded-xl border border-[#f1d8d2] bg-[#fff4f1] px-3 py-2.5">
-                                <span className="text-sm">⚠️</span>
-                                <p className="text-xs text-[#ae554e] leading-5">{post.error_message}</p>
+                            {post.error_message ? (
+                              <div className="mt-3">
+                                <ErrorNotice
+                                  error={post.error_message}
+                                  compact
+                                  fallback={`We couldn't finish this ${post.platform} post.`}
+                                />
                               </div>
-                            )}
+                            ) : null}
 
                             {post.platform_post_id && (
                               <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-ink-500">

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
 import { beginOAuthLogin, fetchAccounts, fetchAccountStatus, getApiBaseUrl, getTenantId } from "@/lib/api";
+import { ErrorNotice } from "@/components/error-notice";
 import { Account, AccountStatusResponse, PlatformName } from "@/lib/types";
 
 const platforms: Array<{ key: PlatformName; label: string; tone: string; icon: string }> = [
@@ -72,7 +73,7 @@ export default function SettingsClient() {
       </header>
 
       <div className="flex-1 space-y-6 px-5 py-6 sm:px-8">
-        {error && <div className="rounded-2xl border border-[#f1d3d0] bg-[#fff4f3] px-4 py-3 text-sm text-[#a54848]">{error}</div>}
+        <ErrorNotice error={error} fallback="We couldn't load workspace settings right now." />
 
         {/* Top row */}
         <div className="fade-up grid gap-6 lg:grid-cols-[1fr_1fr_1fr]">
@@ -209,14 +210,14 @@ export default function SettingsClient() {
                   type="button"
                   onClick={() => void handleOAuthConnect(platform.key)}
                   style={{ animationDelay: `${0.05 + i * 0.06}s` }}
-                  className={`platform-card fade-up group rounded-[22px] border p-4 ${
+                  className={`platform-card fade-up group rounded-[22px] border p-4 transition-all duration-300 ${
                     connected
-                      ? "border-[#ebe3d4] bg-[#fffdf9]"
-                      : "border-dashed border-[#e6dcc8] bg-[#faf6ef] opacity-80 hover:opacity-100"
+                      ? "border-[#ebe3d4] bg-[linear-gradient(145deg,#fffdf9_0%,#fff7ea_100%)]"
+                      : "border-dashed border-[#e6dcc8] bg-[#faf6ef] opacity-90 hover:opacity-100"
                   }`}
                 >
                   <div className="flex items-start justify-between gap-2">
-                    <div className={`flex h-11 w-11 items-center justify-center rounded-xl text-sm font-bold ${platform.tone} transition-transform group-hover:scale-110`}>
+                    <div className={`flex h-11 w-11 items-center justify-center rounded-xl text-sm font-bold ${platform.tone} transition-all duration-300 group-hover:scale-110 group-hover:rotate-3`}>
                       {platform.icon}
                     </div>
                     <div className="flex items-center gap-1 mt-0.5">
@@ -232,7 +233,7 @@ export default function SettingsClient() {
                     <span className={`text-xs font-medium ${connected ? "text-[#4a6d16]" : "text-[#999]"}`}>
                       {connected ? "Connected" : "Disconnected"}
                     </span>
-                    <span className="rounded-full border border-[#e8decd] bg-white px-2.5 py-1 text-xs font-medium text-ink-700 transition-all group-hover:border-brand-300 group-hover:bg-brand-50 group-hover:text-ink-900">
+                    <span className="rounded-full border border-[#e8decd] bg-white px-2.5 py-1 text-xs font-medium text-ink-700 transition-all group-hover:border-brand-300 group-hover:bg-brand-50 group-hover:text-ink-900 group-hover:shadow-sm">
                       {connected ? "Manage" : "Connect"}
                     </span>
                   </div>

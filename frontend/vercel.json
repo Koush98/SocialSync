@@ -8,6 +8,7 @@
   "env": {
     "NEXT_PUBLIC_API_BASE_URL": "@next_public_api_base_url",
     "NEXT_PUBLIC_TENANT_ID": "@next_public_tenant_id",
-    "NEXT_PUBLIC_AUTH_TOKEN_STORAGE_KEY": "socialsync_jwt"
+    "NEXT_PUBLIC_AUTH_TOKEN_STORAGE_KEY": "snapkey_jwt",
+    "NEXT_PUBLIC_DEBUG_BEARER_TOKEN": "@next_public_debug_bearer_token"
   }
 }

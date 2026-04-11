@@ -2,8 +2,10 @@
 
 import { useEffect, useMemo, useState } from "react";
 
+import { ErrorNotice } from "@/components/error-notice";
 import { PostComposerModal } from "@/components/post-composer-modal-v2";
 import { beginOAuthLogin, fetchAccounts, fetchAccountStatus, fetchPosts } from "@/lib/api";
+import { getReadableError } from "@/lib/error-utils";
 import { Account, AccountStatusResponse, PlatformName, Post } from "@/lib/types";
 
 const platformMeta: Array<{ key: PlatformName; label: string; hint: string; tone: string; gradient: string }> = [
@@ -190,11 +192,9 @@ export default function DashboardClient() {
               </button>
             </div>
 
-            {error ? <div className="mb-4 rounded-2xl border border-[#f1d3d0] bg-[#fff4f3] px-4 py-3 text-sm text-[#a54848]">{error}</div> : null}
+            {error ? <div className="mb-4"><ErrorNotice error={error} fallback="We couldn't load the dashboard right now." /></div> : null}
             {oauthBanner ? (
-              <div className={`mb-4 rounded-2xl border px-4 py-3 text-sm ${oauthBanner.tone === "success" ? "border-[#d7e9c0] bg-[#f7fbef] text-[#53722c]" : "border-[#f1d3d0] bg-[#fff4f3] text-[#a54848]"}`}>
-                {oauthBanner.text}
-              </div>
+              <div className={`mb-4 rounded-2xl border px-4 py-3 text-sm ${oauthBanner.tone === "success" ? "border-[#d7e9c0] bg-[#f7fbef] text-[#53722c]" : "border-[#f1d3d0] bg-[#fff4f3] text-[#a54848]"}`}>{oauthBanner.text}</div>
             ) : null}
 
             {/* Stats row */}
@@ -385,7 +385,13 @@ export default function DashboardClient() {
                         <span className="text-xs text-ink-500">#{post.id}</span>
                         <StatusBadge status={post.status} />
                       </div>
-                      <p className="mt-0.5 truncate text-sm text-ink-600">{post.error_message || post.content || "Waiting for execution."}</p>
+                      <p className="mt-0.5 truncate text-sm text-ink-600">
+                        {post.error_message
+                          ? getReadableError(post.error_message, {
+                              fallback: `We couldn't finish this ${post.platform} post.`,
+                            }).summary
+                          : post.content || "Waiting for execution."}
+                      </p>
                     </div>
                     <span className="shrink-0 text-xs text-ink-400 whitespace-nowrap">{formatDate(post.updated_at ?? post.created_at)}</span>
                   </div>

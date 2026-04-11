@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 
+import { ErrorNotice } from "@/components/error-notice";
 import { updatePost } from "@/lib/api";
 import { Post } from "@/lib/types";
 
@@ -70,7 +71,7 @@ export function EditPostModal({ post, onClose, onSaved }: Props) {
           <button type="button" onClick={onClose} className="secondary-button h-11 w-11 rounded-2xl p-0">×</button>
         </div>
 
-        {error ? <div className="mb-4 rounded-2xl border border-[#f1d3d0] bg-[#fff4f3] px-4 py-3 text-sm text-[#a54848]">{error}</div> : null}
+        {error ? <div className="mb-4"><ErrorNotice error={error} fallback="We couldn't update this post right now." /></div> : null}
 
         <div className="space-y-4">
           <textarea value={content} onChange={(event) => setContent(event.target.value)} className="field-input min-h-[170px] resize-none" />

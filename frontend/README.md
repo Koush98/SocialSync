@@ -62,7 +62,8 @@ Next.js-based frontend for the SocialSync social media scheduling platform.
    ```
    NEXT_PUBLIC_API_BASE_URL=https://your-production-api.com
    NEXT_PUBLIC_TENANT_ID=your_tenant_id
-   NEXT_PUBLIC_AUTH_TOKEN_STORAGE_KEY=socialsync_jwt
+   NEXT_PUBLIC_AUTH_TOKEN_STORAGE_KEY=snapkey_jwt
+   NEXT_PUBLIC_DEBUG_BEARER_TOKEN=your_raw_jwt_if_needed
    ```
 
 4. **Deploy:**
@@ -91,9 +92,10 @@ docker run -p 3000:3000 socialsync-frontend
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `NEXT_PUBLIC_API_BASE_URL` | Backend API URL | `http://127.0.0.1:8000` |
+| `NEXT_PUBLIC_API_BASE_URL` | Backend API URL | `http://localhost:8000` |
 | `NEXT_PUBLIC_TENANT_ID` | Multi-tenant identifier | `tenant_123` |
-| `NEXT_PUBLIC_AUTH_TOKEN_STORAGE_KEY` | JWT storage key | `socialsync_jwt` |
+| `NEXT_PUBLIC_AUTH_TOKEN_STORAGE_KEY` | JWT storage key | `snapkey_jwt` |
+| `NEXT_PUBLIC_DEBUG_BEARER_TOKEN` | Optional demo login JWT | empty |
 
 ### API Integration
 
@@ -101,12 +103,12 @@ The frontend connects to the backend API using the configured `NEXT_PUBLIC_API_B
 
 **Local Development:**
 ```env
-NEXT_PUBLIC_API_BASE_URL=http://127.0.0.1:8000
+NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
 ```
 
-**Production:**
+**Vercel + ngrok testing:**
 ```env
-NEXT_PUBLIC_API_BASE_URL=https://api.yourdomain.com
+NEXT_PUBLIC_API_BASE_URL=https://your-ngrok-domain.ngrok-free.app
 ```
 
 ## 🏗️ Project Structure
@@ -158,9 +160,23 @@ If you see CORS errors in the browser console:
 
 ### API Connection Issues
 
-1. Verify backend is running: `curl http://127.0.0.1:8000/`
+1. Verify backend is running: `curl http://localhost:8000/`
 2. Check environment variables are set correctly
 3. Restart the Next.js dev server after changing `.env.local`
+
+### Vercel + ngrok
+
+If you are hosting the frontend on Vercel while keeping the backend local:
+
+1. Start the backend locally
+2. Expose port `8000` with ngrok
+3. Set `NEXT_PUBLIC_API_BASE_URL` in Vercel to the ngrok HTTPS URL
+4. Update backend `BACKEND_PUBLIC_URL`, `FRONTEND_URL`, and CORS settings to match
+5. Keep the backend and ngrok running during testing
+
+See the root deployment guide:
+
+- [`DEPLOYMENT_VERCEL_NGROK.md`](../DEPLOYMENT_VERCEL_NGROK.md)
 
 ### Build Errors
 

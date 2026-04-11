@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 
 import { fetchAccounts, fetchPostMetrics, fetchPosts } from "@/lib/api";
+import { ErrorNotice } from "@/components/error-notice";
 import { Account, NormalizedPostMetrics, PlatformName, Post, PostLiveMetricsResponse } from "@/lib/types";
 
 const platforms: Array<{ key: PlatformName; label: string; tone: string }> = [
@@ -155,6 +156,21 @@ export default function AnalyticsClient() {
     [posts],
   );
 
+  const bestPlatform = useMemo(
+    () =>
+      [...platformRows]
+        .sort((a, b) => b.posted - a.posted || b.metrics.views - a.metrics.views)[0] ?? null,
+    [platformRows],
+  );
+
+  const needsAttention = useMemo(
+    () =>
+      platformRows
+        .filter((row) => row.failed > 0)
+        .sort((a, b) => b.failed - a.failed)[0] ?? null,
+    [platformRows],
+  );
+
   return (
     <main className="flex min-h-[calc(100vh-2.5rem)] flex-col">
       <header className="border-b border-[#f0e7d7] px-5 py-4 sm:px-8">
@@ -173,7 +189,32 @@ export default function AnalyticsClient() {
       </header>
 
       <div className="flex-1 space-y-6 px-5 py-6 sm:px-8">
-        {error ? <div className="rounded-2xl border border-[#f1d3d0] bg-[#fff4f3] px-4 py-3 text-sm text-[#a54848]">{error}</div> : null}
+        <ErrorNotice error={error} fallback="We couldn't load analytics right now." />
+
+        <section className="grid gap-4 lg:grid-cols-2">
+          <div className="panel p-5 sm:p-6">
+            <div className="text-xs font-semibold uppercase tracking-[0.12em] text-[#b38d35]">What is going well</div>
+            <h2 className="mt-3 font-display text-2xl font-semibold tracking-[-0.05em] text-ink-900">
+              {bestPlatform ? `${bestPlatform.label} is your strongest channel right now.` : "Your analytics overview is ready."}
+            </h2>
+            <p className="mt-2 text-sm leading-6 text-ink-600">
+              {bestPlatform
+                ? `${bestPlatform.posted} published post${bestPlatform.posted !== 1 ? "s" : ""} and ${bestPlatform.metrics.views} views are leading the current mix.`
+                : "Publish a few posts to start surfacing platform performance trends here."}
+            </p>
+          </div>
+          <div className="panel p-5 sm:p-6">
+            <div className="text-xs font-semibold uppercase tracking-[0.12em] text-[#b38d35]">Needs attention</div>
+            <h2 className="mt-3 font-display text-2xl font-semibold tracking-[-0.05em] text-ink-900">
+              {needsAttention ? `${needsAttention.label} needs a quick check.` : "No urgent delivery issues detected."}
+            </h2>
+            <p className="mt-2 text-sm leading-6 text-ink-600">
+              {needsAttention
+                ? `${needsAttention.failed} failure${needsAttention.failed !== 1 ? "s" : ""} were detected on ${needsAttention.label}. Open the post logs below if you need the technical reason.`
+                : "Your recent publishing activity looks healthy, with no failing platform standing out."}
+            </p>
+          </div>
+        </section>
 
         <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           {[
@@ -215,9 +256,9 @@ export default function AnalyticsClient() {
 
             <div className="grid gap-4 md:grid-cols-2">
               {platformRows.map((row) => (
-                <div key={row.key} className="rounded-[24px] border border-[#ece2d2] bg-[#fffdf9] p-5">
+                <div key={row.key} className="rounded-[24px] border border-[#ece2d2] bg-[#fffdf9] p-5 transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_18px_44px_rgba(24,24,24,0.08)]">
                   <div className="flex items-start justify-between gap-4">
-                    <div className={`flex h-12 w-12 items-center justify-center rounded-2xl text-sm font-semibold ${row.tone}`}>{initials(row.label)}</div>
+                      <div className={`flex h-12 w-12 items-center justify-center rounded-2xl text-sm font-semibold transition-transform duration-300 hover:scale-110 ${row.tone}`}>{initials(row.label)}</div>
                     <span className="rounded-full bg-[#faf4e5] px-3 py-1 text-xs font-semibold text-[#b38d35]">{row.accounts} account(s)</span>
                   </div>
                   <div className="mt-4">
@@ -277,7 +318,9 @@ export default function AnalyticsClient() {
                       <div className="text-sm font-medium text-ink-900">
                         {post.platform} #{post.id}
                       </div>
-                      <div className="mt-1 text-sm leading-6 text-ink-600">{post.error_message}</div>
+                      <div className="mt-2">
+                        <ErrorNotice error={post.error_message} compact fallback="This delivery attempt failed." />
+                      </div>
                     </div>
                   ))
                 ) : (
