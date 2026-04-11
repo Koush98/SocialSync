@@ -2,7 +2,7 @@
 name = "socialsyncv1"
 version = "0.1.0"
 description = "Multi-platform Social Media Scheduler"
-requires-python = "==3.9.6"
+requires-python = ">=3.9,<3.10"
 
 dependencies = [
     "fastapi>=0.115.0",
