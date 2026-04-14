@@ -34,5 +34,5 @@ RUN chmod +x start-beat.sh
 
 EXPOSE 8000
 
-# Runtime command is provided by docker-compose so migrations run before the app starts.
-CMD ["uv", "run", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Default command uses startup script (can be overridden by Railway)
+CMD ["./start-backend.sh"]
