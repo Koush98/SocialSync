@@ -6,7 +6,6 @@
   },
   "deploy": {
     "startCommand": "./start-backend.sh",
-    "healthcheckPath": "/",
     "restartPolicyType": "ON_FAILURE",
     "restartPolicyMaxRetries": 10
   }
