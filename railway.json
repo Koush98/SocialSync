@@ -5,7 +5,7 @@
     "dockerfilePath": "Dockerfile"
   },
   "deploy": {
-    "startCommand": "uv run uvicorn app.main:app --host 0.0.0.0 --port $PORT",
+    "startCommand": "./start-backend.sh",
     "healthcheckPath": "/api/v1/health",
     "restartPolicyType": "ON_FAILURE",
     "restartPolicyMaxRetries": 10

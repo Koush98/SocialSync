@@ -20,11 +20,17 @@ COPY . .
 # Install dependencies
 RUN uv sync --frozen --no-dev
 
-# Make wait script executable
+# Make scripts executable
 COPY wait-for-db.sh .
 RUN chmod +x wait-for-db.sh
 COPY docker-entrypoint.sh .
 RUN chmod +x docker-entrypoint.sh
+COPY start-backend.sh .
+RUN chmod +x start-backend.sh
+COPY start-worker.sh .
+RUN chmod +x start-worker.sh
+COPY start-beat.sh .
+RUN chmod +x start-beat.sh
 
 EXPOSE 8000
 
