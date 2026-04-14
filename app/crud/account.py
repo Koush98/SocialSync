@@ -85,6 +85,9 @@ def get_account_status_summary(db: Session, tenant_id: str):
         "linkedin": {"connected": False, "active_accounts": 0},
         "twitter": {"connected": False, "active_accounts": 0},
         "youtube": {"connected": False, "active_accounts": 0},
+        "blogger": {"connected": False, "active_accounts": 0},
+        "google_business": {"connected": False, "active_accounts": 0},
+        "wordpress": {"connected": False, "active_accounts": 0},
     }
 
     for account in accounts:

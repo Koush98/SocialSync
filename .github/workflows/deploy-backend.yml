@@ -1,0 +1,193 @@
+name: Deploy Backend to Railway
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - 'app/**'
+      - 'alembic/**'
+      - 'tests/**'
+      - 'Dockerfile.railway'
+      - 'railway*.json'
+      - 'pyproject.toml'
+      - 'uv.lock'
+      - '.github/workflows/deploy-backend.yml'
+  workflow_dispatch: # Manual trigger
+
+env:
+  RAILWAY_API_TOKEN: ${{ secrets.RAILWAY_API_TOKEN }}
+  RAILWAY_PROJECT_ID: ${{ secrets.RAILWAY_PROJECT_ID }}
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: socialsync_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+      
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.9'
+
+      - name: Install uv
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+      - name: Install dependencies
+        run: uv sync --frozen --no-dev
+
+      - name: Run tests
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/socialsync_test
+          REDIS_URL: redis://localhost:6379/0
+          ENCRYPTION_KEY: dGVzdC1lbmNyeXB0aW9uLWtleS0zMmJ5dGVz
+          JWT_SECRET: test-jwt-secret-for-ci
+          FACEBOOK_CLIENT_ID: test
+          FACEBOOK_SECRET: test
+          LINKEDIN_CLIENT_ID: test
+          LINKEDIN_SECRET: test
+          GOOGLE_CLIENT_ID: test
+          GOOGLE_SECRET: test
+          TWITTER_CLIENT_ID: test
+          TWITTER_CLIENT_SECRET: test
+          CLOUDINARY_CLOUD_NAME: test
+          CLOUDINARY_API_KEY: test
+          CLOUDINARY_API_SECRET: test
+        run: |
+          uv run alembic upgrade head
+          uv run pytest tests/ -v --tb=short
+
+  deploy-backend:
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Railway CLI
+        run: |
+          curl -fsSL https://railway.app/install.sh | sh
+
+      - name: Link Railway project
+        run: |
+          railway link --project ${{ secrets.RAILWAY_PROJECT_ID }}
+          railway environment production
+
+      - name: Deploy Backend API
+        run: |
+          railway up --service backend --detach
+
+      - name: Wait for backend deployment
+        run: sleep 30
+
+      - name: Health check
+        run: |
+          BACKEND_URL=$(railway domain --service backend)
+          echo "Backend URL: $BACKEND_URL"
+          for i in {1..10}; do
+            if curl -f "${BACKEND_URL}/api/v1/health"; then
+              echo "✅ Backend is healthy!"
+              break
+            fi
+            echo "Waiting for backend to start... (attempt $i/10)"
+            sleep 10
+          done
+
+  deploy-worker:
+    needs: deploy-backend
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Railway CLI
+        run: |
+          curl -fsSL https://railway.app/install.sh | sh
+
+      - name: Link Railway project
+        run: |
+          railway link --project ${{ secrets.RAILWAY_PROJECT_ID }}
+          railway environment production
+
+      - name: Deploy Celery Worker
+        run: |
+          railway up --service worker --detach
+
+      - name: Verify worker started
+        run: |
+          echo "✅ Worker deployment triggered"
+          echo "Check Railway dashboard for worker logs"
+
+  deploy-beat:
+    needs: deploy-backend
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Railway CLI
+        run: |
+          curl -fsSL https://railway.app/install.sh | sh
+
+      - name: Link Railway project
+        run: |
+          railway link --project ${{ secrets.RAILWAY_PROJECT_ID }}
+          railway environment production
+
+      - name: Deploy Celery Beat
+        run: |
+          railway up --service beat --detach
+
+      - name: Verify beat started
+        run: |
+          echo "✅ Beat deployment triggered"
+          echo "Check Railway dashboard for beat logs"
+
+  notify:
+    needs: [deploy-backend, deploy-worker, deploy-beat]
+    runs-on: ubuntu-latest
+    if: always()
+    
+    steps:
+      - name: Deployment summary
+        run: |
+          echo "## Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "- **Backend**: ${{ needs.deploy-backend.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Worker**: ${{ needs.deploy-worker.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Beat**: ${{ needs.deploy-beat.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Commit**: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Branch**: ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY

@@ -2,6 +2,24 @@
 
 Use this setup when you want the frontend deployed on Vercel while the FastAPI backend keeps running on your local machine.
 
+## Auth model for `.NET` and Android WebView
+
+Native apps should keep using the normal bearer-authenticated backend flow, but the WebView handoff should use the newer code-exchange path instead of putting the raw JWT in the URL.
+
+Recommended flow:
+
+1. Native app authenticates the user and gets a bearer token
+2. Native app calls `POST /api/v1/auth/webview/create-code` with `Authorization: Bearer <jwt>`
+3. Backend returns a short-lived URL like `/webview-auth?code=...`
+4. Native app opens that URL in WebView
+5. Frontend exchanges the one-time code and establishes the cookie session
+
+Important:
+
+- the user identity stays the same as before
+- the direct JWT is just converted into a safer temporary handoff code for the browser layer
+- native apps can still call protected backend APIs directly with bearer auth when needed
+
 ## What auto redeploys
 
 - **Frontend:** auto redeploys on every GitHub push through Vercel

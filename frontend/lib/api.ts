@@ -162,14 +162,30 @@ export function getOAuthLoginUrl(platform: string) {
   return `${API_BASE_URL}/api/v1/oauth/${oauthPlatform}/login?tenant_id=${getRuntimeTenantId()}`;
 }
 
-export async function beginOAuthLogin(platform: string) {
+export async function beginOAuthLogin(
+  platform: string,
+  options?: { addAnother?: boolean },
+) {
   const oauthPlatform = platform === "youtube" ? "google" : platform;
+  const addAnother = options?.addAnother ? "true" : "false";
   const response = await apiFetch<{ authorization_url: string }>(
-    `/api/v1/oauth/${oauthPlatform}/authorize`,
+    `/api/v1/oauth/${oauthPlatform}/authorize?add_another=${addAnother}`,
   );
   if (typeof window !== "undefined") {
     window.location.href = response.authorization_url;
   }
+}
+
+export function connectWordpressSite(payload: {
+  site_url: string;
+  username: string;
+  application_password: string;
+  account_name?: string | null;
+}) {
+  return apiFetch<Account>("/api/v1/accounts/wordpress/connect", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
 }
 
 export function fetchAccountStatus() {

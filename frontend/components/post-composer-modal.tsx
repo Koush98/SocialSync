@@ -11,14 +11,26 @@ type Config = {
   youtubePrivacy: string; youtubeTags: string; facebookPostAsReel: boolean;
 };
 
-const platforms: PlatformName[] = ["facebook", "instagram", "linkedin", "twitter", "youtube"];
-const labels: Record<PlatformName, string> = { facebook: "Facebook", instagram: "Instagram", linkedin: "LinkedIn", twitter: "X / Twitter", youtube: "YouTube" };
+const platforms: PlatformName[] = ["facebook", "instagram", "linkedin", "twitter", "youtube", "blogger", "google_business", "wordpress"];
+const labels: Record<PlatformName, string> = {
+  facebook: "Facebook",
+  instagram: "Instagram",
+  linkedin: "LinkedIn",
+  twitter: "X / Twitter",
+  youtube: "YouTube",
+  blogger: "Blogger",
+  google_business: "Google Business",
+  wordpress: "WordPress",
+};
 const descriptions: Record<PlatformName, string> = {
   facebook: "Pages and Meta-connected publishing",
   instagram: "Feed and reel publishing",
   linkedin: "Professional and company updates",
   twitter: "Fast campaign updates and threads",
   youtube: "Video publishing through Google",
+  blogger: "Text-first blog publishing",
+  google_business: "Business profile updates",
+  wordpress: "Website article publishing",
 };
 
 const emptyConfig = (): Config => ({
@@ -36,6 +48,9 @@ function platformPayload(platform: PlatformName, config: Config) {
   if (platform === "instagram") return { instagram: { caption_mode: config.instagramMode, first_comment: config.instagramFirstComment || null } };
   if (platform === "linkedin") return { linkedin: { visibility: config.linkedinVisibility } };
   if (platform === "twitter") return { twitter: { reply_settings: config.twitterReplySettings } };
+  if (platform === "blogger") return { blogger: {} };
+  if (platform === "google_business") return { google_business: {} };
+  if (platform === "wordpress") return { wordpress: {} };
   return {
     youtube: {
       title: config.youtubeTitle || null,
@@ -60,7 +75,7 @@ export function PostComposerModal({ open, onClose }: Props) {
   const [uploading, setUploading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [configs, setConfigs] = useState<Record<PlatformName, Config>>({
-    facebook: emptyConfig(), instagram: emptyConfig(), linkedin: emptyConfig(), twitter: emptyConfig(), youtube: emptyConfig(),
+    facebook: emptyConfig(), instagram: emptyConfig(), linkedin: emptyConfig(), twitter: emptyConfig(), youtube: emptyConfig(), blogger: emptyConfig(), google_business: emptyConfig(), wordpress: emptyConfig(),
   });
 
   useEffect(() => {

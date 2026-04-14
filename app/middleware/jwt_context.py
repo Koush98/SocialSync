@@ -60,6 +60,10 @@ async def jwt_context_middleware(request: Request, call_next):
     oauth_path = request.url.path.startswith("/api/v1/oauth/")
     oauth_callback_path = oauth_path and request.url.path.endswith("/callback")
     auth_exchange_path = request.url.path == "/api/v1/auth/webview/exchange"
+    public_auth_paths = {
+        "/api/v1/auth/session",
+        "/api/v1/auth/logout",
+    }
 
     public_paths = [
         "/docs",
@@ -69,6 +73,9 @@ async def jwt_context_middleware(request: Request, call_next):
         "/api/v1/openapi.json",
     ]
     if any(request.url.path.startswith(p) for p in public_paths):
+        return await call_next(request)
+
+    if request.url.path in public_auth_paths:
         return await call_next(request)
 
     if oauth_callback_path or auth_exchange_path:

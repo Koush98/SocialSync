@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-import { beginOAuthLogin } from "@/lib/api";
+import { beginOAuthLogin, connectWordpressSite } from "@/lib/api";
 import { Account, AccountStatusResponse, PlatformName } from "@/lib/types";
 
 const platforms: Array<{
@@ -33,9 +33,9 @@ const platforms: Array<{
     key: "linkedin",
     label: "LinkedIn",
     description: "Deliver professional updates, company posts, and high-intent social reach.",
-    supportedTypes: "Supported now: personal LinkedIn profiles. Multiple saved profiles are supported per tenant.",
-    unsupportedMessage: "Company page publishing needs an additional organization-admin flow before it can be connected safely.",
-    connectLabel: "Connect profile",
+    supportedTypes: "Supported: LinkedIn personal profiles and organization pages available to the signed-in admin account.",
+    unsupportedMessage: "If a company page is missing after connect, the LinkedIn user usually needs the correct page admin/content role on that organization.",
+    connectLabel: "Connect profile or page",
   },
   {
     key: "twitter",
@@ -53,6 +53,30 @@ const platforms: Array<{
     unsupportedMessage: "Each Google account can expose one or more managed channels, stored separately in this tenant.",
     connectLabel: "Connect channel",
   },
+  {
+    key: "blogger",
+    label: "Blogger",
+    description: "Publish blog articles to Blogger blogs available under the connected Google account.",
+    supportedTypes: "Supported: Blogger blogs where the authenticated Google account has admin access.",
+    unsupportedMessage: "Supports text, image, and video embeds from connected media URLs.",
+    connectLabel: "Connect Blogger blogs",
+  },
+  {
+    key: "google_business",
+    label: "Google Business",
+    description: "Share business updates to connected Google Business Profile locations.",
+    supportedTypes: "Supported: Google Business Profile locations visible to the authenticated Google account.",
+    unsupportedMessage: "Supports text plus one image or one video per local post.",
+    connectLabel: "Connect locations",
+  },
+  {
+    key: "wordpress",
+    label: "WordPress",
+    description: "Publish website articles through a WordPress site using an Application Password.",
+    supportedTypes: "Supported: self-hosted or WordPress.com sites with REST API and Application Password access.",
+    unsupportedMessage: "Use a site URL, username, and application password to connect each WordPress site separately.",
+    connectLabel: "Connect WordPress site",
+  },
 ];
 
 export function PlatformCards({
@@ -64,10 +88,25 @@ export function PlatformCards({
 }) {
   const [error, setError] = useState<string | null>(null);
 
-  async function handleOAuthConnect(platform: PlatformName) {
+  function normalizePlatform(value: string | null | undefined) {
+    return (value ?? "").trim().toLowerCase();
+  }
+
+  async function handleOAuthConnect(platform: PlatformName, addAnother = false) {
     try {
       setError(null);
-      await beginOAuthLogin(platform);
+      if (platform === "wordpress") {
+        const site_url = window.prompt("WordPress site URL");
+        if (!site_url) return;
+        const username = window.prompt("WordPress username");
+        if (!username) return;
+        const application_password = window.prompt("WordPress application password");
+        if (!application_password) return;
+        await connectWordpressSite({ site_url, username, application_password });
+        window.location.reload();
+        return;
+      }
+      await beginOAuthLogin(platform, { addAnother });
     } catch (oauthError) {
       setError(oauthError instanceof Error ? oauthError.message : "Unable to start social login.");
     }
@@ -83,7 +122,7 @@ export function PlatformCards({
       {platforms.map((platform) => {
         const state = accountStatus[platform.key];
         const isConnected = state.connected;
-        const platformAccounts = accounts.filter((account) => account.platform === platform.key);
+        const platformAccounts = accounts.filter((account) => normalizePlatform(account.platform) === platform.key);
 
         return (
           <article
@@ -177,7 +216,7 @@ export function PlatformCards({
               <button
                 type="button"
                 className="btn primary"
-                onClick={() => void handleOAuthConnect(platform.key)}
+                onClick={() => void handleOAuthConnect(platform.key, platformAccounts.length > 0)}
               >
                 {isConnected ? `Add another ${platform.label} account` : platform.connectLabel}
               </button>

@@ -61,6 +61,10 @@ function getLivePostUrl(post: Post, metrics?: PostLiveMetricsResponse | null) {
     return null;
   }
 
+  if (/^https?:\/\//i.test(post.platform_post_id)) {
+    return post.platform_post_id;
+  }
+
   switch (post.platform) {
     case "youtube":
       return `https://www.youtube.com/watch?v=${encodeURIComponent(post.platform_post_id)}`;
@@ -103,6 +107,9 @@ function PlatformBadge({ platform }: { platform: string }) {
     linkedin: "bg-[#eef7ff] text-[#0f6ab8]",
     twitter: "bg-[#111] text-white",
     youtube: "bg-[#fff1ef] text-[#d8342b]",
+    blogger: "bg-[#fff2e8] text-[#ef6c00]",
+    google_business: "bg-[#eef5ff] text-[#1a73e8]",
+    wordpress: "bg-[#f0f3f5] text-[#1f2933]",
   };
   return (
     <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold capitalize ${colors[platform] ?? "bg-gray-100 text-gray-600"}`}>

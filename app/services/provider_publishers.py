@@ -5,6 +5,7 @@ Supports Facebook, Instagram, LinkedIn, Twitter, and YouTube publishing
 with comprehensive error handling, media validation, duplicate detection,
 and structured logging.
 """
+import html
 import hashlib
 import json
 import time
@@ -645,6 +646,12 @@ def publish_to_provider(
     if post.platform == "youtube":
         youtube_access_token = _get_youtube_access_token(account)
         return publish_to_youtube(post, account, youtube_access_token, options.get("youtube", {}), normalized_media)
+    if post.platform == "blogger":
+        return publish_to_blogger(post, account, access_token, options.get("blogger", {}), normalized_media)
+    if post.platform == "google_business":
+        return publish_to_google_business(post, account, access_token, options.get("google_business", {}), normalized_media)
+    if post.platform == "wordpress":
+        return publish_to_wordpress(post, account, access_token, options.get("wordpress", {}), normalized_media)
 
     raise UnsupportedPublishError(f"Unsupported platform '{post.platform}'")
 
@@ -771,6 +778,11 @@ class FacebookPublisher(BasePublisher):
         try:
             # Validate media
             self.validate_media(media_assets)
+
+            # Reel mode is only valid for a single video upload.
+            if options.get("caption_mode") == "reel":
+                if len(media_assets) != 1 or media_assets[0].file_type != "video":
+                    raise MediaValidationError("Instagram Reel mode requires exactly one video asset.")
 
             # Check for duplicates
             self.check_duplicate(content, media_assets)
@@ -1074,7 +1086,7 @@ def _linkedin_upload_video(access_token: str, author_urn: str, media: MediaAsset
             return video_urn
         if status in {"PROCESSING_FAILED", "FAILED"}:
             raise PublishError("LinkedIn video processing failed after upload.", retryable=False)
-        sleep(3)
+        time.sleep(3)
 
     raise PublishError("LinkedIn video is still processing. Try publishing again shortly.", retryable=True)
 
@@ -1119,7 +1131,7 @@ def _twitter_wait_for_media(access_token: str, media_id: str) -> None:
             return
         if state == "failed":
             raise PublishError(f"Twitter media processing failed: {processing}", retryable=False)
-        sleep(processing.get("check_after_secs", 2))
+        time.sleep(processing.get("check_after_secs", 2))
 
     raise PublishError("Twitter media is still processing. Try again shortly.", retryable=True)
 
@@ -1265,6 +1277,207 @@ def publish_to_twitter(
 
     data = response.json().get("data", {})
     return data.get("id") or account.platform_account_id
+
+
+def _derive_text_post_title(post: ScheduledPost, options: Dict[str, Any], fallback: str) -> str:
+    explicit_title = options.get("title")
+    if isinstance(explicit_title, str) and explicit_title.strip():
+        return explicit_title.strip()
+
+    content = (post.content or "").strip()
+    if not content:
+        return fallback
+
+    first_line = content.splitlines()[0].strip()
+    return first_line[:80] if first_line else fallback
+
+
+def _html_content_from_post(post: ScheduledPost) -> str:
+    content = (post.content or "").strip()
+    if not content:
+        return ""
+    paragraphs = [segment.strip() for segment in content.splitlines() if segment.strip()]
+    if not paragraphs:
+        return ""
+    return "".join(f"<p>{html.escape(paragraph)}</p>" for paragraph in paragraphs)
+
+
+def _blogger_html_content(post: ScheduledPost, media_assets: List[MediaAsset]) -> str:
+    content_html = _html_content_from_post(post)
+    media_html_parts: List[str] = []
+    for media in media_assets:
+        media_url = (media.file_url or "").strip()
+        if not media_url:
+            continue
+        alt_text = html.escape(media.alt_text or "")
+        if media.file_type == "image":
+            media_html_parts.append(
+                f'<figure><img src="{html.escape(media_url)}" alt="{alt_text}" loading="lazy" /></figure>'
+            )
+        elif media.file_type == "video":
+            media_html_parts.append(
+                (
+                    "<figure>"
+                    f'<video controls preload="metadata" style="max-width:100%;">'
+                    f'<source src="{html.escape(media_url)}" type="{html.escape(media.mime_type or "video/mp4")}" />'
+                    "Your browser does not support the video tag."
+                    "</video>"
+                    "</figure>"
+                )
+            )
+    media_html = "".join(media_html_parts)
+    return f"{content_html}{media_html}" if media_html else content_html
+
+
+def _wordpress_html_content(post: ScheduledPost, media_assets: List[MediaAsset]) -> str:
+    content_html = _html_content_from_post(post)
+    media_html_parts: List[str] = []
+    for media in media_assets:
+        media_url = (media.file_url or "").strip()
+        if not media_url:
+            continue
+        alt_text = html.escape(media.alt_text or "")
+        if media.file_type == "image":
+            media_html_parts.append(
+                f'<figure><img src="{html.escape(media_url)}" alt="{alt_text}" loading="lazy" /></figure>'
+            )
+        elif media.file_type == "video":
+            media_html_parts.append(
+                (
+                    "<figure>"
+                    f'<video controls preload="metadata" style="max-width:100%;">'
+                    f'<source src="{html.escape(media_url)}" type="{html.escape(media.mime_type or "video/mp4")}" />'
+                    "Your browser does not support the video tag."
+                    "</video>"
+                    "</figure>"
+                )
+            )
+        else:
+            raise UnsupportedPublishError("WordPress supports image and video assets only.")
+    media_html = "".join(media_html_parts)
+    return f"{content_html}{media_html}" if media_html else content_html
+
+
+def _wordpress_account_details(account: SocialAccount) -> Tuple[str, str]:
+    site_url, separator, username = (account.platform_account_id or "").partition("|")
+    if not separator or not site_url or not username:
+        raise PublishError(
+            "WordPress account metadata is incomplete. Reconnect the WordPress site and try again.",
+            retryable=False,
+        )
+    return site_url.rstrip("/"), username
+
+
+def publish_to_blogger(
+    post: ScheduledPost,
+    account: SocialAccount,
+    access_token: str,
+    options: Dict[str, Any],
+    media_assets: List[MediaAsset],
+) -> str:
+    if not post.content and not media_assets:
+        raise PublishError("Blogger post requires text or media content.", retryable=False)
+
+    title = _derive_text_post_title(post, options, "New Blogger Post")
+    response = requests.post(
+        f"https://www.googleapis.com/blogger/v3/blogs/{quote(account.platform_account_id, safe='')}/posts",
+        headers=_twitter_json_headers(access_token),
+        params={"isDraft": "false"},
+        json={
+            "title": title,
+            "content": _blogger_html_content(post, media_assets),
+            "labels": options.get("labels") or [],
+        },
+        timeout=60,
+    )
+    if not response.ok:
+        _raise_provider_error("blogger", response)
+
+    payload = response.json()
+    return payload.get("url") or str(payload.get("id") or account.platform_account_id)
+
+
+def publish_to_google_business(
+    post: ScheduledPost,
+    account: SocialAccount,
+    access_token: str,
+    options: Dict[str, Any],
+    media_assets: List[MediaAsset],
+) -> str:
+    if not post.content and not media_assets:
+        raise PublishError("Google Business post requires text or media content.", retryable=False)
+    if len(media_assets) > 1:
+        raise UnsupportedPublishError("Google Business currently supports one image or one video per local post.")
+
+    payload: Dict[str, Any] = {
+        "languageCode": options.get("languageCode") or "en-US",
+        "summary": post.content.strip(),
+        "topicType": options.get("topicType") or "STANDARD",
+    }
+    call_to_action_url = options.get("callToActionUrl")
+    if call_to_action_url:
+        payload["callToAction"] = {
+            "actionType": options.get("actionType") or "LEARN_MORE",
+            "url": call_to_action_url,
+        }
+    if media_assets:
+        media = media_assets[0]
+        if media.file_type not in {"image", "video"}:
+            raise UnsupportedPublishError("Google Business supports image or video media only.")
+        payload["media"] = [
+            {
+                "mediaFormat": "PHOTO" if media.file_type == "image" else "VIDEO",
+                "sourceUrl": media.file_url,
+            }
+        ]
+
+    response = requests.post(
+        f"https://mybusiness.googleapis.com/v4/{account.platform_account_id}/localPosts",
+        headers=_twitter_json_headers(access_token),
+        json=payload,
+        timeout=60,
+    )
+    if not response.ok:
+        _raise_provider_error("google_business", response)
+
+    return response.json().get("name") or account.platform_account_id
+
+
+def publish_to_wordpress(
+    post: ScheduledPost,
+    account: SocialAccount,
+    access_token: str,
+    options: Dict[str, Any],
+    media_assets: List[MediaAsset],
+) -> str:
+    if not post.content and not media_assets:
+        raise PublishError("WordPress post requires text or media content.", retryable=False)
+    if any(media.file_type not in {"image", "video"} for media in media_assets):
+        raise UnsupportedPublishError("WordPress supports image and video assets only.")
+
+    site_url, username = _wordpress_account_details(account)
+    title = _derive_text_post_title(post, options, "New WordPress Post")
+    response = requests.post(
+        f"{site_url}/wp-json/wp/v2/posts",
+        auth=(username, access_token),
+        json={
+            "title": title,
+            "content": _wordpress_html_content(post, media_assets),
+            "status": options.get("status") or "publish",
+            "excerpt": options.get("excerpt") or "",
+        },
+        timeout=60,
+    )
+    if response.status_code in {401, 403}:
+        raise PublishError(
+            "WordPress authentication failed. Reconnect the WordPress site application password and try again.",
+            retryable=False,
+        )
+    if not response.ok:
+        _raise_provider_error("wordpress", response)
+
+    payload = response.json()
+    return payload.get("link") or str(payload.get("id") or account.platform_account_id)
 
 
 class InstagramPublisher(BasePublisher):

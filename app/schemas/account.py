@@ -46,3 +46,13 @@ class AccountStatusResponse(BaseModel):
     linkedin: AccountStatusItem
     twitter: AccountStatusItem
     youtube: AccountStatusItem
+    blogger: AccountStatusItem
+    google_business: AccountStatusItem
+    wordpress: AccountStatusItem
+
+
+class WordPressConnectRequest(BaseModel):
+    site_url: str
+    username: str
+    application_password: str
+    account_name: Optional[str] = None
