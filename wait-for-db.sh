@@ -13,8 +13,9 @@ echo "Waiting for Postgres at ${DB_HOST}:${DB_PORT}..."
 # Wait for TCP connection first
 MAX_RETRIES=60
 RETRY_COUNT=0
+DB_READY=0
 
-while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+while [ $RETRY_COUNT -lt $MAX_RETRIES ] && [ $DB_READY -eq 0 ]; do
     if nc -z "$DB_HOST" "$DB_PORT" 2>/dev/null; then
         echo "TCP connection successful, verifying PostgreSQL..."
         # Give PostgreSQL a moment to fully initialize
@@ -34,20 +35,27 @@ except Exception as e:
     sys.exit(1)
 " 2>&1; then
             echo "Postgres is ready!"
-            # Exit successfully - the calling script will continue
-            exit 0
+            DB_READY=1
         else
             echo "PostgreSQL port open but not accepting connections yet..."
         fi
     fi
-    RETRY_COUNT=$((RETRY_COUNT + 1))
-    echo "Waiting for Postgres... attempt $RETRY_COUNT/$MAX_RETRIES"
-    sleep 2
+    
+    if [ $DB_READY -eq 0 ]; then
+        RETRY_COUNT=$((RETRY_COUNT + 1))
+        echo "Waiting for Postgres... attempt $RETRY_COUNT/$MAX_RETRIES"
+        sleep 2
+    fi
 done
 
-echo "ERROR: Could not connect to Postgres after $MAX_RETRIES attempts"
-DB_URL_PREFIX=$(echo "$DATABASE_URL" | cut -c1-30)
-echo "DATABASE_URL: ${DB_URL_PREFIX}..."
-echo "DB_HOST: ${DB_HOST}"
-echo "DB_PORT: ${DB_PORT}"
-exit 1
+if [ $DB_READY -eq 0 ]; then
+    echo "ERROR: Could not connect to Postgres after $MAX_RETRIES attempts"
+    DB_URL_PREFIX=$(echo "$DATABASE_URL" | cut -c1-30)
+    echo "DATABASE_URL: ${DB_URL_PREFIX}..."
+    echo "DB_HOST: ${DB_HOST}"
+    echo "DB_PORT: ${DB_PORT}"
+    exit 1
+fi
+
+# Continue with the rest of the script
+exit 0
