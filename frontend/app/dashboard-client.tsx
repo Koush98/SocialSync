@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { ErrorNotice } from "@/components/error-notice";
 import { PostComposerModal } from "@/components/post-composer-modal-v2";
-import { beginOAuthLogin, fetchAccounts, fetchAccountStatus, fetchPosts } from "@/lib/api";
+import { beginOAuthLogin, connectWordpressSite, fetchAccounts, fetchAccountStatus, fetchPosts } from "@/lib/api";
 import { getReadableError } from "@/lib/error-utils";
 import { Account, AccountStatusResponse, PlatformName, Post } from "@/lib/types";
 
@@ -14,6 +14,9 @@ const platformMeta: Array<{ key: PlatformName; label: string; hint: string; tone
   { key: "linkedin", label: "LinkedIn", hint: "Profiles & Pages", tone: "bg-[#eef7ff] text-[#0f6ab8]", gradient: "from-[#0a66c2]/10 to-[#0e76d0]/5" },
   { key: "twitter", label: "X (Twitter)", hint: "Text first", tone: "bg-[#111111] text-white", gradient: "from-[#000000]/8 to-[#222222]/4" },
   { key: "youtube", label: "YouTube", hint: "Video publishing", tone: "bg-[#fff1ef] text-[#d8342b]", gradient: "from-[#ff0000]/8 to-[#ff4e45]/4" },
+  { key: "blogger", label: "Blogger", hint: "Blog publishing", tone: "bg-[#fff2e8] text-[#ef6c00]", gradient: "from-[#ef6c00]/10 to-[#ffb74d]/5" },
+  { key: "google_business", label: "Google Business", hint: "Business updates", tone: "bg-[#eef5ff] text-[#1a73e8]", gradient: "from-[#1a73e8]/10 to-[#8ab4f8]/5" },
+  { key: "wordpress", label: "WordPress", hint: "Website blog", tone: "bg-[#f0f3f5] text-[#1f2933]", gradient: "from-[#334e68]/10 to-[#bcccdc]/5" },
 ];
 
 const emptyStatus: AccountStatusResponse = {
@@ -22,7 +25,14 @@ const emptyStatus: AccountStatusResponse = {
   linkedin: { connected: false, active_accounts: 0 },
   twitter: { connected: false, active_accounts: 0 },
   youtube: { connected: false, active_accounts: 0 },
+  blogger: { connected: false, active_accounts: 0 },
+  google_business: { connected: false, active_accounts: 0 },
+  wordpress: { connected: false, active_accounts: 0 },
 };
+
+function normalizePlatform(value: string | null | undefined) {
+  return (value ?? "").trim().toLowerCase();
+}
 
 function PlatformLogo({ platform, className = "h-6 w-6" }: { platform: PlatformName; className?: string }) {
   switch (platform) {
@@ -56,6 +66,24 @@ function PlatformLogo({ platform, className = "h-6 w-6" }: { platform: PlatformN
       return (
         <svg viewBox="0 0 24 24" aria-hidden="true" className={className} fill="currentColor">
           <path d="M20.4 8.1a2.7 2.7 0 0 0-1.9-1.9C16.8 5.7 12 5.7 12 5.7s-4.8 0-6.5.5a2.7 2.7 0 0 0-1.9 1.9c-.5 1.7-.5 3.9-.5 3.9s0 2.2.5 3.9a2.7 2.7 0 0 0 1.9 1.9c1.7.5 6.5.5 6.5.5s4.8 0 6.5-.5a2.7 2.7 0 0 0 1.9-1.9c.5-1.7.5-3.9.5-3.9s0-2.2-.5-3.9ZM10.4 14.6V9.4l4.6 2.6-4.6 2.6Z" />
+        </svg>
+      );
+    case "blogger":
+      return (
+        <svg viewBox="0 0 24 24" aria-hidden="true" className={className} fill="currentColor">
+          <path d="M6 4.5h7.5a4.5 4.5 0 0 1 4.5 4.5v.8a1.2 1.2 0 0 0 1.2 1.2h.3v4A4.5 4.5 0 0 1 15 19.5H9A4.5 4.5 0 0 1 4.5 15V6A1.5 1.5 0 0 1 6 4.5Zm3 5.3h4.6a1 1 0 1 0 0-2H9a1 1 0 1 0 0 2Zm0 4.2h6a1 1 0 1 0 0-2H9a1 1 0 1 0 0 2Z" />
+        </svg>
+      );
+    case "google_business":
+      return (
+        <svg viewBox="0 0 24 24" aria-hidden="true" className={className} fill="currentColor">
+          <path d="M4.5 6A1.5 1.5 0 0 1 6 4.5h12A1.5 1.5 0 0 1 19.5 6v12A1.5 1.5 0 0 1 18 19.5H6A1.5 1.5 0 0 1 4.5 18V6Zm3 2.2V15h3.7c2.9 0 4.8-1.4 4.8-3.4 0-1.2-.7-2.1-1.8-2.6.7-.5 1.1-1.2 1.1-2.1 0-1.7-1.4-2.7-3.9-2.7H7.5Zm2.3 2h1.8c.9 0 1.4.4 1.4 1s-.5 1-1.4 1H9.8v-2Zm0-3.8h1.5c.8 0 1.2.3 1.2.9 0 .5-.4.9-1.2.9H9.8V6.4Z" />
+        </svg>
+      );
+    case "wordpress":
+      return (
+        <svg viewBox="0 0 24 24" aria-hidden="true" className={className} fill="currentColor">
+          <path d="M12 4.5A7.5 7.5 0 1 0 19.5 12 7.5 7.5 0 0 0 12 4.5Zm0 13.2a5.7 5.7 0 0 1-2.8-.7l3-8.3c.4 0 .8 0 1.1-.1-.3-.1-.9-.1-1.5-.1-.5 0-.9 0-1.2.1A5.8 5.8 0 0 1 16 8.3l.1.1c-.4 0-.8.1-1.1.1-.4 0-.7.3-.6.7l1.9 5.5a5.7 5.7 0 0 1-4.3 3ZM7.7 8.9c0-.2 0-.5.1-.7l2.3 6.4-1 2.8A5.7 5.7 0 0 1 7.7 8.9Zm9.6 6-.6-1.8c.3-.8.5-1.6.5-2.3 0-.9-.3-1.5-.6-2-.2-.3-.3-.5-.3-.8 0-.3.2-.6.6-.6h.1a5.7 5.7 0 0 1 .3 7.5Z" />
         </svg>
       );
     default:
@@ -98,10 +126,21 @@ export default function DashboardClient() {
   const [composerOpen, setComposerOpen] = useState(false);
   const [oauthBanner, setOauthBanner] = useState<{ tone: "success" | "error"; text: string } | null>(null);
 
-  async function handleOAuthConnect(platform: PlatformName) {
+  async function handleOAuthConnect(platform: PlatformName, addAnother = false) {
     try {
       setError(null);
-      await beginOAuthLogin(platform);
+      if (platform === "wordpress") {
+        const site_url = window.prompt("WordPress site URL");
+        if (!site_url) return;
+        const username = window.prompt("WordPress username");
+        if (!username) return;
+        const application_password = window.prompt("WordPress application password");
+        if (!application_password) return;
+        await connectWordpressSite({ site_url, username, application_password });
+        await load();
+        return;
+      }
+      await beginOAuthLogin(platform, { addAnother });
     } catch (oauthError) {
       setError(oauthError instanceof Error ? oauthError.message : "Unable to start social login.");
     }
@@ -154,6 +193,14 @@ export default function DashboardClient() {
   }, [accounts, posts, status]);
 
   const connectedAccounts = accounts.filter(a => a.is_active);
+  const accountsByPlatform = useMemo(
+    () =>
+      platformMeta.reduce<Record<PlatformName, Account[]>>((acc, platform) => {
+        acc[platform.key] = connectedAccounts.filter((account) => normalizePlatform(account.platform) === platform.key);
+        return acc;
+      }, {} as Record<PlatformName, Account[]>),
+    [connectedAccounts],
+  );
   const recentPosts = [...posts]
     .sort((a, b) => new Date(b.scheduled_at ?? b.created_at ?? 0).getTime() - new Date(a.scheduled_at ?? a.created_at ?? 0).getTime())
     .slice(0, 6);
@@ -226,13 +273,13 @@ export default function DashboardClient() {
               </div>
               <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                 {platformMeta.map((platform, i) => {
-                  const platformAccounts = connectedAccounts.filter(a => a.platform === platform.key);
+                  const platformAccounts = accountsByPlatform[platform.key] ?? [];
                   const connected = status[platform.key].connected;
                   return (
                     <button
                       key={platform.key}
                       type="button"
-                      onClick={() => void handleOAuthConnect(platform.key)}
+                      onClick={() => void handleOAuthConnect(platform.key, platformAccounts.length > 0)}
                       style={{ animationDelay: `${0.05 + i * 0.06}s` }}
                       className={`platform-card fade-up group rounded-[24px] border p-5 ${
                         connected
@@ -251,12 +298,16 @@ export default function DashboardClient() {
                       </div>
                       <div className="mt-4">
                         <h3 className="text-base font-semibold text-ink-900">{platform.label}</h3>
-                        <p className="mt-0.5 text-xs text-ink-500">{platformAccounts[0]?.account_name ?? platform.hint}</p>
+                        <p className="mt-0.5 text-xs text-ink-500">
+                          {platformAccounts.length
+                            ? platformAccounts.slice(0, 2).map((account) => account.account_name).join(", ")
+                            : platform.hint}
+                        </p>
                       </div>
                       <div className="mt-4 flex items-end justify-between gap-3">
                         <span className="text-xs text-ink-500">{platformAccounts.length} account(s)</span>
                         <span className="rounded-full border border-[#e8decd] bg-white px-3 py-1.5 text-xs font-medium text-ink-700 transition-colors group-hover:border-brand-300 group-hover:bg-brand-50">
-                          {connected ? "Manage" : "Connect"}
+                          {connected && platformAccounts.length ? "Add / Manage" : "Connect"}
                         </span>
                       </div>
                     </button>

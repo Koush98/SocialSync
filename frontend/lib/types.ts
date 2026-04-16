@@ -9,6 +9,9 @@ export type AccountStatusResponse = {
   linkedin: AccountStatusItem;
   twitter: AccountStatusItem;
   youtube: AccountStatusItem;
+  blogger: AccountStatusItem;
+  google_business: AccountStatusItem;
+  wordpress: AccountStatusItem;
 };
 
 export type Account = {
@@ -77,4 +80,7 @@ export type PlatformName =
   | "instagram"
   | "linkedin"
   | "twitter"
-  | "youtube";
+  | "youtube"
+  | "blogger"
+  | "google_business"
+  | "wordpress";

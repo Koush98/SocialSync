@@ -197,21 +197,23 @@ This keeps normal API auth strict while allowing provider callbacks to complete 
 
 ## WebView auth bridge
 
-The project includes a WebView-ready auth flow for native app embedding:
+The native app authentication model is still bearer-token based, but the browser handoff is now safer than before.
 
-1. Native host gets an app JWT
-2. Native host calls `POST /api/v1/auth/webview/create-code`
-3. Backend returns a short-lived one-time URL
-4. Native app opens `/webview-auth?code=...`
+Current flow:
+
+1. `.NET` or Android authenticates the user natively and holds the app bearer token
+2. Native host calls `POST /api/v1/auth/webview/create-code` with `Authorization: Bearer <jwt>`
+3. Backend converts that authenticated context into a short-lived one-time code
+4. Native host opens `/webview-auth?code=...` inside WebView
 5. Frontend exchanges the code with `POST /api/v1/auth/webview/exchange`
-6. Backend establishes the session
-7. Frontend redirects into the app
+6. Backend sets the session cookie
+7. Frontend redirects into the app as an authenticated user
 
-This is designed for:
+Important:
 
-- `.NET WebView`
-- Android WebView
-- other embedded browser containers
+- the real JWT is **not** exposed directly in the WebView URL
+- the one-time code is just a temporary handoff token
+- direct bearer-token API auth still works for backend-to-backend or native API calls
 
 ## Posting behavior
 
@@ -274,22 +276,14 @@ docker exec -it socialsync_redis redis-cli FLUSHALL
 
 ## Deployment
 
-### Frontend on Vercel + backend on ngrok
+For the practical hosted-frontend test setup, use:
 
-This is the easiest practical hosted UI setup when backend is still running locally.
+- [DEPLOYMENT_VERCEL_NGROK.md](/D:/SocialSyncV1/DEPLOYMENT_VERCEL_NGROK.md)
 
-Use the dedicated deployment guide:
-
-- `DEPLOYMENT_VERCEL_NGROK.md`
-
-### Important limitation
-
-With this setup:
+Important limitation:
 
 - frontend auto redeploys on GitHub push through Vercel
-- backend does **not** auto redeploy through ngrok
-
-If you want true automatic redeploy on both frontend and backend, the backend must be hosted on a real platform instead of your local machine.
+- backend does **not** auto redeploy through ngrok because it still runs on your own machine
 
 ## Troubleshooting
 
@@ -326,12 +320,12 @@ The frontend converts local datetime selection to UTC before sending to the back
 
 If old posts were created before that fix, edit and resave them.
 
-## Additional docs
+## Project docs
 
-- `SETUP.md`
-- `TESTING.md`
-- `frontend/README.md`
-- `DEPLOYMENT_VERCEL_NGROK.md`
+Use these two documents as the main handoff set:
+
+- [README.md](/D:/SocialSyncV1/README.md)
+- [DEPLOYMENT_VERCEL_NGROK.md](/D:/SocialSyncV1/DEPLOYMENT_VERCEL_NGROK.md)
 
 ## Current status
 

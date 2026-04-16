@@ -12,6 +12,9 @@ const platforms: Array<{ key: PlatformName; label: string; tone: string }> = [
   { key: "linkedin", label: "LinkedIn", tone: "bg-[#eef7ff] text-[#0f6ab8]" },
   { key: "twitter", label: "X (Twitter)", tone: "bg-[#111111] text-white" },
   { key: "youtube", label: "YouTube", tone: "bg-[#fff1ef] text-[#d8342b]" },
+  { key: "blogger", label: "Blogger", tone: "bg-[#fff2e8] text-[#ef6c00]" },
+  { key: "google_business", label: "Google Business", tone: "bg-[#eef5ff] text-[#1a73e8]" },
+  { key: "wordpress", label: "WordPress", tone: "bg-[#f0f3f5] text-[#1f2933]" },
 ];
 
 function initials(label: string) {

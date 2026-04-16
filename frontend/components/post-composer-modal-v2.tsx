@@ -59,16 +59,20 @@ type Config = {
   youtubeEmbeddable: boolean;
   youtubeLicense: string;
   youtubePublicStatsViewable: boolean;
-  facebookPostAsReel: boolean;
+  facebookLink: string;
+  facebookVideoTitle: string;
 };
 
-const platforms: PlatformName[] = ["facebook", "instagram", "linkedin", "twitter", "youtube"];
+const platforms: PlatformName[] = ["facebook", "instagram", "linkedin", "twitter", "youtube", "blogger", "google_business", "wordpress"];
 const labels: Record<PlatformName, string> = {
   facebook: "Facebook",
   instagram: "Instagram",
   linkedin: "LinkedIn",
   twitter: "X (Twitter)",
   youtube: "YouTube",
+  blogger: "Blogger",
+  google_business: "Google Business",
+  wordpress: "WordPress",
 };
 
 const platformTone: Record<PlatformName, string> = {
@@ -77,6 +81,9 @@ const platformTone: Record<PlatformName, string> = {
   linkedin: "bg-[#eef7ff] text-[#0f6ab8]",
   twitter: "bg-[#171717] text-white",
   youtube: "bg-[#fff1ef] text-[#d8342b]",
+  blogger: "bg-[#fff2e8] text-[#ef6c00]",
+  google_business: "bg-[#eef5ff] text-[#1a73e8]",
+  wordpress: "bg-[#f0f3f5] text-[#1f2933]",
 };
 
 const descriptions: Record<PlatformName, string> = {
@@ -85,6 +92,9 @@ const descriptions: Record<PlatformName, string> = {
   linkedin: "Professional profile updates",
   twitter: "Text-first campaign updates",
   youtube: "Video publishing through Google",
+  blogger: "Blogger article publishing",
+  google_business: "Business profile local posts",
+  wordpress: "Website article publishing",
 };
 
 const emptyConfig = (): Config => ({
@@ -106,7 +116,8 @@ const emptyConfig = (): Config => ({
   youtubeEmbeddable: true,
   youtubeLicense: "youtube",
   youtubePublicStatsViewable: true,
-  facebookPostAsReel: false,
+  facebookLink: "",
+  facebookVideoTitle: "",
 });
 
 function dedupeIds(values: number[]) {
@@ -177,6 +188,24 @@ function getPlatformMediaState(platform: PlatformName, selectedAssets: MediaAsse
     return { valid: true, message: videoCount ? "Ready for an X video post." : `Ready for an X image post (${imageCount}/4).` };
   }
 
+  if (platform === "blogger") {
+    if (!selectedAssets.length) return { valid: true, message: "Ready for a text Blogger article." };
+    if (otherCount) return { valid: false, message: "Blogger supports image and video assets only." };
+    return { valid: true, message: "Ready for a Blogger article with media." };
+  }
+
+  if (platform === "google_business") {
+    if (!selectedAssets.length) return { valid: true, message: "Ready for a text Google Business update." };
+    if (otherCount) return { valid: false, message: "Google Business supports image and video assets only." };
+    if (selectedAssets.length > 1) return { valid: false, message: "Google Business supports one media item per post." };
+    return { valid: true, message: videoCount ? "Ready for a Google Business video update." : "Ready for a Google Business photo update." };
+  }
+
+  if (platform === "wordpress") {
+    if (otherCount) return { valid: false, message: "WordPress supports image and video assets only." };
+    return { valid: true, message: selectedAssets.length ? "Ready for a WordPress article with media." : "Ready for a WordPress article." };
+  }
+
   return getYoutubeMediaState(selectedAssets);
 }
 
@@ -209,12 +238,22 @@ function formatLocalSchedule(value: string) {
 }
 
 function platformPayload(platform: PlatformName, config: Config) {
-  if (platform === "facebook") return { facebook: { post_as_reel: config.facebookPostAsReel } };
+  if (platform === "facebook") {
+    return {
+      facebook: {
+        link: config.facebookLink || null,
+        title: config.facebookVideoTitle || null,
+      },
+    };
+  }
   if (platform === "instagram") {
     return { instagram: { caption_mode: config.instagramMode, first_comment: config.instagramFirstComment || null } };
   }
   if (platform === "linkedin") return { linkedin: { visibility: config.linkedinVisibility } };
   if (platform === "twitter") return { twitter: { reply_settings: config.twitterReplySettings } };
+  if (platform === "blogger") return { blogger: {} };
+  if (platform === "google_business") return { google_business: {} };
+  if (platform === "wordpress") return { wordpress: {} };
   return {
     youtube: {
       title: config.youtubeTitle || null,
@@ -236,6 +275,29 @@ function initials(label: string) {
   return label.slice(0, 2).toUpperCase();
 }
 
+function normalizePlatform(value: string | null | undefined) {
+  return (value ?? "").trim().toLowerCase();
+}
+
+function formatAccountTypeLabel(accountType: string | null | undefined) {
+  switch (accountType) {
+    case "personal_profile":
+      return "Profile";
+    case "organization":
+      return "Organization page";
+    case "business_or_creator":
+      return "Professional account";
+    case "blog":
+      return "Blog";
+    case "business_location":
+      return "Business location";
+    case "wordpress_site":
+      return "WordPress site";
+    default:
+      return accountType?.replace(/_/g, " ") ?? "Connected account";
+  }
+}
+
 export function PostComposerModal({ open, onClose, onCreated }: Props) {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [media, setMedia] = useState<MediaAsset[]>([]);
@@ -255,6 +317,9 @@ export function PostComposerModal({ open, onClose, onCreated }: Props) {
     linkedin: emptyConfig(),
     twitter: emptyConfig(),
     youtube: emptyConfig(),
+    blogger: emptyConfig(),
+    google_business: emptyConfig(),
+    wordpress: emptyConfig(),
   });
 
   useEffect(() => {
@@ -270,14 +335,17 @@ export function PostComposerModal({ open, onClose, onCreated }: Props) {
         for (const platform of platforms) {
           next[platform] = {
             ...next[platform],
-            accountId: next[platform].accountId ?? activeAccounts.find((account) => account.platform === platform)?.id ?? null,
+            accountId:
+              next[platform].accountId ??
+              activeAccounts.find((account) => normalizePlatform(account.platform) === platform)?.id ??
+              null,
           };
         }
         return next;
       });
 
       const firstPlatformWithAccount = platforms.find(
-        (platform) => activeAccounts.some((account) => account.platform === platform),
+        (platform) => activeAccounts.some((account) => normalizePlatform(account.platform) === platform),
       );
       if (firstPlatformWithAccount) {
         setActivePlatform(firstPlatformWithAccount);
@@ -294,7 +362,7 @@ export function PostComposerModal({ open, onClose, onCreated }: Props) {
   const accountsByPlatform = useMemo(
     () =>
       platforms.reduce<Record<PlatformName, Account[]>>((acc, platform) => {
-        acc[platform] = accounts.filter((account) => account.platform === platform);
+        acc[platform] = accounts.filter((account) => normalizePlatform(account.platform) === platform);
         return acc;
       }, {} as Record<PlatformName, Account[]>),
     [accounts],
@@ -360,6 +428,12 @@ export function PostComposerModal({ open, onClose, onCreated }: Props) {
             return "Instagram carousel must contain same media type (all images or all videos).";
           }
         }
+        if (configs.instagram.instagramMode === "reel") {
+          const reelVideos = selectedAssets.filter((asset) => asset.file_type === "video").length;
+          if (mediaCount !== 1 || reelVideos !== 1) {
+            return "Instagram Reel mode requires exactly one video asset.";
+          }
+        }
       }
 
       if (platform === "linkedin") {
@@ -386,6 +460,24 @@ export function PostComposerModal({ open, onClose, onCreated }: Props) {
         }
         if (!hasVideo || hasNonVideo) {
           return "YouTube post media must be a single video file.";
+        }
+      }
+
+      if (platform === "blogger" || platform === "google_business" || platform === "wordpress") {
+        if (platform === "wordpress" && !content.trim() && mediaCount === 0) {
+          return `${labels[platform]} requires text or media content.`;
+        }
+        if ((platform === "blogger" || platform === "google_business") && !content.trim() && mediaCount === 0) {
+          return `${labels[platform]} requires text or media content.`;
+        }
+        if (platform === "google_business" && mediaCount > 1) {
+          return "Google Business supports one image or one video per post.";
+        }
+        if (
+          platform === "wordpress" &&
+          selectedAssets.some((asset) => asset.file_type !== "image" && asset.file_type !== "video")
+        ) {
+          return "WordPress supports image and video assets only.";
         }
       }
     }
@@ -697,7 +789,9 @@ export function PostComposerModal({ open, onClose, onCreated }: Props) {
 
                 <div className="space-y-4">
                   <div>
-                    <label className="mb-2 block text-sm font-semibold text-ink-900">Connected account</label>
+                    <label className="mb-2 block text-sm font-semibold text-ink-900">
+                      {`Post to ${labels[activePlatform]} account`}
+                    </label>
                     <select
                       value={config.accountId ?? ""}
                       onChange={(event) =>
@@ -709,9 +803,17 @@ export function PostComposerModal({ open, onClose, onCreated }: Props) {
                     >
                       {!selectedPlatformAccounts.length ? <option value="">No connected account</option> : null}
                       {selectedPlatformAccounts.map((account) => (
-                        <option key={account.id} value={account.id}>{account.account_name}</option>
+                        <option key={account.id} value={account.id}>
+                          {account.account_name}
+                          {account.account_type ? ` (${formatAccountTypeLabel(account.account_type)})` : ""}
+                        </option>
                       ))}
                     </select>
+                    {selectedPlatformAccounts.length > 1 ? (
+                      <p className="mt-2 text-xs text-ink-500">
+                        Multiple accounts are connected for this platform. Choose exactly which page, profile, or channel should receive this post.
+                      </p>
+                    ) : null}
                   </div>
 
                   <div>
@@ -728,13 +830,26 @@ export function PostComposerModal({ open, onClose, onCreated }: Props) {
                   </div>
 
                   {activePlatform === "facebook" ? (
-                    <label className="flex items-start gap-3 rounded-[22px] border border-[#ebdfcf] bg-white p-4">
-                      <input type="checkbox" checked={configs.facebook.facebookPostAsReel} onChange={(event) => updateConfig("facebook", { facebookPostAsReel: event.target.checked })} className="mt-1" />
+                    <>
                       <div>
-                        <div className="text-sm font-semibold text-ink-900">Post as Reel</div>
-                        <p className="mt-1 text-sm text-ink-600">Store reel intent for Facebook publishing.</p>
+                        <label className="mb-2 block text-sm font-semibold text-ink-900">Link (optional)</label>
+                        <input
+                          value={configs.facebook.facebookLink}
+                          onChange={(event) => updateConfig("facebook", { facebookLink: event.target.value })}
+                          placeholder="https://example.com"
+                          className="field-input"
+                        />
                       </div>
-                    </label>
+                      <div>
+                        <label className="mb-2 block text-sm font-semibold text-ink-900">Video title (optional)</label>
+                        <input
+                          value={configs.facebook.facebookVideoTitle}
+                          onChange={(event) => updateConfig("facebook", { facebookVideoTitle: event.target.value })}
+                          placeholder="Used when posting a video"
+                          className="field-input"
+                        />
+                      </div>
+                    </>
                   ) : null}
 
                   {activePlatform === "instagram" ? (
@@ -745,6 +860,7 @@ export function PostComposerModal({ open, onClose, onCreated }: Props) {
                           <option value="feed">Feed post</option>
                           <option value="reel">Reel</option>
                         </select>
+                        <p className="mt-2 text-xs text-ink-500">Reel mode requires exactly one video asset.</p>
                       </div>
                       <div>
                         <label className="mb-2 block text-sm font-semibold text-ink-900">First comment</label>

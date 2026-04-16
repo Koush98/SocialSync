@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
-import { beginOAuthLogin, fetchAccounts, fetchAccountStatus, getApiBaseUrl, getTenantId } from "@/lib/api";
+import { beginOAuthLogin, connectWordpressSite, fetchAccounts, fetchAccountStatus, getApiBaseUrl, getTenantId } from "@/lib/api";
 import { ErrorNotice } from "@/components/error-notice";
 import { Account, AccountStatusResponse, PlatformName } from "@/lib/types";
 
@@ -13,6 +13,9 @@ const platforms: Array<{ key: PlatformName; label: string; tone: string; icon: s
   { key: "linkedin", label: "LinkedIn", tone: "bg-[#eef7ff] text-[#0f6ab8]", icon: "in" },
   { key: "twitter", label: "X (Twitter)", tone: "bg-[#111111] text-white", icon: "𝕏" },
   { key: "youtube", label: "YouTube", tone: "bg-[#fff1ef] text-[#d8342b]", icon: "▶" },
+  { key: "blogger", label: "Blogger", tone: "bg-[#fff2e8] text-[#ef6c00]", icon: "B" },
+  { key: "google_business", label: "Google Business", tone: "bg-[#eef5ff] text-[#1a73e8]", icon: "G" },
+  { key: "wordpress", label: "WordPress", tone: "bg-[#f0f3f5] text-[#1f2933]", icon: "W" },
 ];
 
 const emptyStatus: AccountStatusResponse = {
@@ -21,7 +24,14 @@ const emptyStatus: AccountStatusResponse = {
   linkedin: { connected: false, active_accounts: 0 },
   twitter: { connected: false, active_accounts: 0 },
   youtube: { connected: false, active_accounts: 0 },
+  blogger: { connected: false, active_accounts: 0 },
+  google_business: { connected: false, active_accounts: 0 },
+  wordpress: { connected: false, active_accounts: 0 },
 };
+
+function normalizePlatform(value: string | null | undefined) {
+  return (value ?? "").trim().toLowerCase();
+}
 
 export default function SettingsClient() {
   const [accounts, setAccounts] = useState<Account[]>([]);
@@ -29,10 +39,23 @@ export default function SettingsClient() {
   const [error, setError] = useState<string | null>(null);
   const [copiedField, setCopiedField] = useState<string | null>(null);
 
-  async function handleOAuthConnect(platform: PlatformName) {
+  async function handleOAuthConnect(platform: PlatformName, addAnother = false) {
     try {
       setError(null);
-      await beginOAuthLogin(platform);
+      if (platform === "wordpress") {
+        const site_url = window.prompt("WordPress site URL");
+        if (!site_url) return;
+        const username = window.prompt("WordPress username");
+        if (!username) return;
+        const application_password = window.prompt("WordPress application password");
+        if (!application_password) return;
+        await connectWordpressSite({ site_url, username, application_password });
+        const [accountData, statusData] = await Promise.all([fetchAccounts(), fetchAccountStatus()]);
+        setAccounts(accountData);
+        setStatus(statusData);
+        return;
+      }
+      await beginOAuthLogin(platform, { addAnother });
     } catch (oauthError) {
       setError(oauthError instanceof Error ? oauthError.message : "Unable to start social login.");
     }
@@ -52,6 +75,33 @@ export default function SettingsClient() {
   }, []);
 
   const activeAccounts = useMemo(() => accounts.filter(a => a.is_active), [accounts]);
+  const accountsByPlatform = useMemo(
+    () =>
+      platforms.reduce<Record<PlatformName, Account[]>>((acc, platform) => {
+        acc[platform] = accounts.filter((account) => normalizePlatform(account.platform) === platform);
+        return acc;
+      }, {} as Record<PlatformName, Account[]>),
+    [accounts],
+  );
+
+  function accountTypeLabel(account: Account) {
+    switch (account.account_type) {
+      case "page":
+        return "Page";
+      case "business_or_creator":
+        return "Professional Account";
+      case "personal_profile":
+        return "Profile";
+      case "blog":
+        return "Blog";
+      case "business_location":
+        return "Business location";
+      case "wordpress_site":
+        return "WordPress site";
+      default:
+        return account.account_type?.replace(/_/g, " ") ?? "Connected account";
+    }
+  }
 
   function copyToClipboard(text: string, field: string) {
     navigator.clipboard.writeText(text).then(() => {
@@ -187,84 +237,117 @@ export default function SettingsClient() {
           </div>
         </div>
 
-        {/* Channel connections (full width) */}
-        <div className="fade-up fade-up-2 panel p-5 sm:p-6">
-          <div className="mb-5 flex items-center justify-between gap-3">
-            <div>
-              <h2 className="font-display text-2xl font-semibold tracking-[-0.05em] text-ink-900">Channel Connections</h2>
-              <p className="mt-1 text-sm text-ink-600">Connect or reconnect social accounts to enable publishing.</p>
+          {/* Channel connections (full width) */}
+          <div className="fade-up fade-up-2 panel p-5 sm:p-6">
+            <div className="mb-5 flex items-center justify-between gap-3">
+              <div>
+                <h2 className="font-display text-2xl font-semibold tracking-[-0.05em] text-ink-900">Channel Connections</h2>
+                <p className="mt-1 text-sm text-ink-600">
+                  Connect multiple pages, profiles, channels, and business accounts for each platform.
+                </p>
+              </div>
+              <span className="rounded-full bg-brand-50 px-3 py-1.5 text-xs font-semibold text-[#ab8b3b]">
+                {activeAccounts.length} active
+              </span>
             </div>
-            <span className="rounded-full bg-brand-50 px-3 py-1.5 text-xs font-semibold text-[#ab8b3b]">
-              {activeAccounts.length} active
-            </span>
-          </div>
 
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+          <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
             {platforms.map((platform, i) => {
               const connected = status[platform.key].connected;
-              const count = status[platform.key].active_accounts;
-              const preview = activeAccounts.find(a => a.platform === platform.key);
+              const activeCount = status[platform.key].active_accounts;
+              const platformAccounts = accountsByPlatform[platform.key] ?? [];
+
               return (
-                <button
+                <section
                   key={platform.key}
-                  type="button"
-                  onClick={() => void handleOAuthConnect(platform.key)}
                   style={{ animationDelay: `${0.05 + i * 0.06}s` }}
-                  className={`platform-card fade-up group rounded-[22px] border p-4 transition-all duration-300 ${
+                  className={`platform-card fade-up rounded-[24px] border p-5 transition-all duration-300 ${
                     connected
                       ? "border-[#ebe3d4] bg-[linear-gradient(145deg,#fffdf9_0%,#fff7ea_100%)]"
-                      : "border-dashed border-[#e6dcc8] bg-[#faf6ef] opacity-90 hover:opacity-100"
+                      : "border-dashed border-[#e6dcc8] bg-[#faf6ef]"
                   }`}
                 >
-                  <div className="flex items-start justify-between gap-2">
-                    <div className={`flex h-11 w-11 items-center justify-center rounded-xl text-sm font-bold ${platform.tone} transition-all duration-300 group-hover:scale-110 group-hover:rotate-3`}>
-                      {platform.icon}
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-start gap-3">
+                      <div className={`flex h-12 w-12 items-center justify-center rounded-2xl text-sm font-bold ${platform.tone}`}>
+                        {platform.icon}
+                      </div>
+                      <div>
+                        <h3 className="text-base font-semibold text-ink-900">{platform.label}</h3>
+                        <p className="mt-0.5 text-xs text-ink-500">
+                          {platformAccounts.length
+                            ? `${platformAccounts.length} connected account${platformAccounts.length === 1 ? "" : "s"}`
+                            : "No connected accounts yet"}
+                        </p>
+                        <div className="mt-2 flex flex-wrap gap-2 text-xs">
+                          <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 font-medium ${connected ? "bg-[#eef8d8] text-[#4a6d16]" : "bg-[#ece5d8] text-[#8a806f]"}`}>
+                            <span className={`h-2 w-2 rounded-full ${connected ? "bg-[#8dc63f]" : "bg-[#bfb4a2]"}`} />
+                            {connected ? "Connected" : "Not connected"}
+                          </span>
+                          <span className="inline-flex items-center rounded-full bg-white px-2.5 py-1 font-medium text-ink-600 border border-[#e8decd]">
+                            {activeCount} active
+                          </span>
+                        </div>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-1 mt-0.5">
-                      <span className={`h-2 w-2 rounded-full ${connected ? "bg-[#8dc63f] pulse-dot" : "bg-[#d7cdbd]"}`} />
+
+                    <button
+                      type="button"
+                      onClick={() => void handleOAuthConnect(platform.key, platformAccounts.length > 0)}
+                      className="secondary-button shrink-0 px-3 py-2 text-xs font-semibold"
+                    >
+                      {platformAccounts.length ? "Add Another" : "Connect"}
+                    </button>
+                  </div>
+
+                  <div className="mt-4 rounded-[20px] border border-[#ece2d2] bg-white/80 p-3">
+                    <div className="mb-2 flex items-center justify-between">
+                      <span className="text-xs font-semibold uppercase tracking-[0.1em] text-[#b38d35]">Connected accounts</span>
+                      {platformAccounts.length ? (
+                        <span className="text-[11px] text-ink-500">Choose the target account later while posting</span>
+                      ) : null}
                     </div>
+
+                    {platformAccounts.length ? (
+                      <div className="space-y-2">
+                        {platformAccounts.map((account) => (
+                          <div
+                            key={account.id}
+                            className="flex items-start gap-3 rounded-2xl border border-[#ece2d2] bg-[#fffdf9] px-3.5 py-3"
+                          >
+                            <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-xs font-bold ${platform.tone}`}>
+                              {platform.icon.slice(0, 1).toUpperCase()}
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <span className="text-sm font-semibold text-ink-900 truncate">{account.account_name}</span>
+                                <span className="rounded-full bg-[#f5efe2] px-2 py-0.5 text-[11px] font-medium text-ink-600">
+                                  {accountTypeLabel(account)}
+                                </span>
+                                {!account.is_active ? (
+                                  <span className="rounded-full bg-[#f2f2f2] px-2 py-0.5 text-[11px] font-medium text-[#666]">
+                                    Inactive
+                                  </span>
+                                ) : null}
+                              </div>
+                              <div className="mt-1 text-xs text-ink-500 break-all">{account.platform_account_id}</div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="rounded-2xl border border-dashed border-[#e5dbc8] bg-[#fcfaf5] px-4 py-6 text-center">
+                        <div className="text-sm font-medium text-ink-700">No {platform.label} accounts connected</div>
+                        <div className="mt-1 text-xs text-ink-500">
+                          Connect one account now, then use the same button to add more pages or profiles later.
+                        </div>
+                      </div>
+                    )}
                   </div>
-                  <div className="mt-3.5">
-                    <h3 className="text-sm font-semibold text-ink-900">{platform.label}</h3>
-                    <p className="mt-0.5 text-xs text-ink-500 truncate">{preview?.account_name ?? "Not connected"}</p>
-                    <div className="mt-1 text-xs text-ink-400">{count} account{count !== 1 ? "s" : ""}</div>
-                  </div>
-                  <div className="mt-3.5 flex justify-between items-center">
-                    <span className={`text-xs font-medium ${connected ? "text-[#4a6d16]" : "text-[#999]"}`}>
-                      {connected ? "Connected" : "Disconnected"}
-                    </span>
-                    <span className="rounded-full border border-[#e8decd] bg-white px-2.5 py-1 text-xs font-medium text-ink-700 transition-all group-hover:border-brand-300 group-hover:bg-brand-50 group-hover:text-ink-900 group-hover:shadow-sm">
-                      {connected ? "Manage" : "Connect"}
-                    </span>
-                  </div>
-                </button>
+                </section>
               );
             })}
           </div>
-
-          {/* Connected accounts detail */}
-          {activeAccounts.length > 0 && (
-            <div className="mt-6 space-y-2">
-              <h3 className="text-sm font-semibold text-ink-900">Active Account Details</h3>
-              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                {activeAccounts.map(account => {
-                  const platform = platforms.find(p => p.key === account.platform);
-                  return (
-                    <div key={account.id} className="flex items-center gap-3 rounded-2xl border border-[#ece2d2] bg-[#fffdf9] px-4 py-3">
-                      <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-xs font-bold ${platform?.tone ?? "bg-gray-100 text-gray-600"}`}>
-                        {platform?.icon ?? account.platform[0].toUpperCase()}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="text-sm font-medium text-ink-900 truncate">{account.account_name}</div>
-                        <div className="text-xs text-ink-500 truncate">{account.platform_account_id}</div>
-                      </div>
-                      <span className="h-2 w-2 shrink-0 rounded-full bg-[#8dc63f]" />
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
         </div>
       </div>
     </main>
