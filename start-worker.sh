@@ -8,8 +8,8 @@ export PORT=${PORT:-8000}
 export RUN_MIGRATIONS=false
 
 echo "Starting Celery Worker..."
-echo "REDIS_URL: ${REDIS_URL:0:20}..."
-echo "DATABASE_URL: ${DATABASE_URL:0:20}..."
+echo "REDIS_URL set: ${REDIS_URL:+yes}"
+echo "DATABASE_URL set: ${DATABASE_URL:+yes}"
 
 # Wait for database to be ready (without running migrations)
 ./wait-for-db.sh

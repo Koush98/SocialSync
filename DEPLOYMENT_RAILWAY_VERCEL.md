@@ -41,7 +41,7 @@ This guide will help you deploy SocialSync to production with:
    ├── Dockerfile.railway        ✅ Created
    ├── frontend/
    │   └── vercel.json           ✅ Created
-   └── .env.production           ✅ Created
+   └── .env.production.example   ✅ Created
    ```
 
 ---
@@ -79,7 +79,7 @@ This guide will help you deploy SocialSync to production with:
    - **Root Directory**: Leave blank (uses root)
    - **Dockerfile Path**: `Dockerfile.railway`
 4. Go to **"Variables"** tab
-5. Add all environment variables from `.env.production` (see Step 4)
+5. Add all environment variables from `.env.production.example` (see Step 4)
 
 #### 2.6 Configure Worker Service
 1. Click **"+ New"** → **"Empty Service"**

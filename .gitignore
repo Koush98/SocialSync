@@ -19,6 +19,7 @@ wheels/
 # Environment / Secrets
 # ========================
 .env
+.env.production
 
 # ========================
 # Caches

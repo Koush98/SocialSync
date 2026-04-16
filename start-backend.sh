@@ -16,12 +16,9 @@ echo "DATABASE_URL set: ${DATABASE_URL:+yes}"
 echo "REDIS_URL set: ${REDIS_URL:+yes}"
 echo "=================================="
 
-# Wait for database and run migrations
-./wait-for-db.sh
-
-# Start the backend
+# Wait for DB, run migrations, then start backend
 echo ""
 echo "Starting FastAPI server on port $PORT..."
 echo "Server will be ready shortly..."
 echo "=================================="
-exec uv run uvicorn app.main:app --host 0.0.0.0 --port $PORT
+exec ./docker-entrypoint.sh uv run uvicorn app.main:app --host 0.0.0.0 --port $PORT
