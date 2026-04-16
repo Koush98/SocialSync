@@ -2,8 +2,8 @@
 # Railway backend startup script
 set -e
 
-# Use Railway's PORT env var, default to 8000
-export PORT=${PORT:-8000}
+# Use Railway's PORT env var, default to 8000 (Railway uses 8080)
+export PORT=${PORT:-8080}
 
 # Enable migrations for backend service
 export RUN_MIGRATIONS=true
