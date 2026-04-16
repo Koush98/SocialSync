@@ -78,7 +78,9 @@ export default function SettingsClient() {
   const accountsByPlatform = useMemo(
     () =>
       platforms.reduce<Record<PlatformName, Account[]>>((acc, platform) => {
-        acc[platform] = accounts.filter((account) => normalizePlatform(account.platform) === platform);
+        acc[platform.key] = accounts.filter(
+          (account) => normalizePlatform(account.platform) === platform.key
+        );
         return acc;
       }, {} as Record<PlatformName, Account[]>),
     [accounts],
