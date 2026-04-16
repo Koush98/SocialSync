@@ -5,6 +5,9 @@ set -e
 # Use Railway's PORT env var, default to 8000
 export PORT=${PORT:-8000}
 
+# Enable migrations for backend service
+export RUN_MIGRATIONS=true
+
 echo "=================================="
 echo "Starting SocialSync Backend"
 echo "=================================="
@@ -13,11 +16,8 @@ echo "DATABASE_URL set: ${DATABASE_URL:+yes}"
 echo "REDIS_URL set: ${REDIS_URL:+yes}"
 echo "=================================="
 
-# Run migrations first
-echo ""
-echo "Running database migrations..."
-uv run alembic upgrade head
-echo "Migrations complete!"
+# Wait for database and run migrations
+./wait-for-db.sh
 
 # Start the backend
 echo ""
