@@ -37,8 +37,16 @@ def _build_state(tenant_id: str, user_id: str):
 
     encoded = base64.urlsafe_b64encode(json.dumps(payload).encode()).decode()
 
-    # store nonce in Redis (anti-replay)
-    redis_client.setex(f"oauth_state:{payload['nonce']}", 600, "1")
+    # Store nonce in Redis (anti-replay). If Redis is unavailable, surface a
+    # service-level error instead of a generic 500.
+    try:
+        redis_client.setex(f"oauth_state:{payload['nonce']}", 600, "1")
+    except Exception:
+        logger.exception("oauth.state_store_unavailable operation=setex")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="OAuth is temporarily unavailable. Please try again in a moment.",
+        )
 
     return encoded
 
@@ -56,11 +64,27 @@ def _validate_and_extract_state(state: str):
         if time.time() > exp:
             raise HTTPException(status_code=400, detail="State expired")
 
-        # nonce check (anti-replay)
-        if not redis_client.get(f"oauth_state:{nonce}"):
+        # Nonce check (anti-replay).
+        try:
+            nonce_exists = redis_client.get(f"oauth_state:{nonce}")
+        except Exception:
+            logger.exception("oauth.state_store_unavailable operation=get")
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="OAuth is temporarily unavailable. Please try again in a moment.",
+            )
+
+        if not nonce_exists:
             raise HTTPException(status_code=400, detail="Invalid state")
 
-        redis_client.delete(f"oauth_state:{nonce}")
+        try:
+            redis_client.delete(f"oauth_state:{nonce}")
+        except Exception:
+            logger.exception("oauth.state_store_unavailable operation=delete")
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="OAuth is temporarily unavailable. Please try again in a moment.",
+            )
 
         return tenant_id, user_id
 
@@ -283,13 +307,27 @@ def _is_add_another(request: Request) -> bool:
 
 
 def _store_verifier(nonce: str, verifier: str) -> None:
-    redis_client.setex(f"pkce:twitter:{nonce}", 600, verifier)
+    try:
+        redis_client.setex(f"pkce:twitter:{nonce}", 600, verifier)
+    except Exception:
+        logger.exception("oauth.state_store_unavailable operation=setex_twitter_pkce")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="OAuth is temporarily unavailable. Please try again in a moment.",
+        )
 
 
 def _pop_verifier(nonce: str) -> Optional[str]:
     key = f"pkce:twitter:{nonce}"
-    verifier = redis_client.get(key)
-    redis_client.delete(key)
+    try:
+        verifier = redis_client.get(key)
+        redis_client.delete(key)
+    except Exception:
+        logger.exception("oauth.state_store_unavailable operation=getdelete_twitter_pkce")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="OAuth is temporarily unavailable. Please try again in a moment.",
+        )
     return verifier
 
 

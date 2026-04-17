@@ -54,3 +54,17 @@ def publish_post_task(self, post_id: int, tenant_id: str, request_id: str = "N/A
         # Retry with exponential backoff
         countdown = 5 * (2 ** self.request.retries)  # 5s, 10s, 20s
         raise self.retry(exc=e, countdown=countdown)
+
+
+@celery_app.task(name="app.worker.tasks.healthcheck_task")
+def healthcheck_task():
+    """Lightweight task to verify worker consumption path."""
+    log_event(
+        logger,
+        "info",
+        "task.healthcheck",
+        request_id="N/A",
+        step="celery_task_healthcheck",
+        extra={"message": "healthcheck task consumed by worker"},
+    )
+    return {"status": "ok"}

@@ -27,8 +27,10 @@ from app.utils.deps import get_db, get_tenant
 from app.models.social_account import SocialAccount
 from app.services.provider_publishers import PublishError, UnsupportedPublishError, fetch_provider_live_metrics
 from app.worker.celery_app import celery_app
+from app.core.logging import get_logger
 
 router = APIRouter()
+logger = get_logger("app.api.posts")
 
 def _is_future_timestamp(value):
     if not value:
@@ -43,10 +45,37 @@ def _request_id(request: Request) -> str:
 
 
 def _dispatch_publish(post_id: int, tenant_id: str, request_id: str, eta=None):
+    try:
+        # Best-effort worker heartbeat probe. Do not hard-fail on missing ping
+        # because remote-control heartbeats can be flaky across environments.
+        worker_heartbeats = celery_app.control.ping(timeout=3.0)
+        if not worker_heartbeats:
+            logger.warning(
+                "publish.worker_ping_empty post_id=%s request_id=%s; continuing to enqueue",
+                post_id,
+                request_id,
+            )
+    except Exception as exc:
+        logger.warning(
+            "publish.queue_healthcheck_failed request_id=%s error=%s; continuing to enqueue",
+            request_id,
+            str(exc),
+        )
+
     kwargs = {"args": [post_id, tenant_id, request_id]}
     if eta is not None:
         kwargs["eta"] = eta
-    return celery_app.send_task("app.worker.tasks.publish_post_task", **kwargs)
+    try:
+        return celery_app.send_task("app.worker.tasks.publish_post_task", **kwargs)
+    except Exception as exc:
+        logger.exception("publish.queue_dispatch_failed post_id=%s request_id=%s", post_id, request_id)
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=(
+                "Failed to enqueue publish job. "
+                "Please ensure queue services are running and retry."
+            ),
+        ) from exc
 
 
 @router.get("/analytics/summary", response_model=PostAnalyticsSummary)

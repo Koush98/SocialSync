@@ -3,6 +3,7 @@ from sqlalchemy import text
 
 from app.core.config import get_settings
 from app.db.database import SessionLocal
+from app.worker.celery_app import celery_app
 
 router = APIRouter()
 
@@ -45,4 +46,33 @@ def readiness_check():
         "status": overall_status,
         "database": db_ok,
         "redis": redis_ok,
+    }
+
+
+@router.get("/queue")
+def queue_check():
+    """Best-effort Celery worker visibility check."""
+    try:
+        workers = celery_app.control.ping(timeout=3.0) or []
+        return {
+            "status": "ok",
+            "workers_online": len(workers),
+            "workers": workers,
+        }
+    except Exception as exc:
+        return {
+            "status": "error",
+            "workers_online": 0,
+            "workers": [],
+            "detail": str(exc),
+        }
+
+
+@router.post("/queue/dispatch-test")
+def queue_dispatch_test():
+    """Dispatch a no-op task so worker logs can confirm message consumption."""
+    task = celery_app.send_task("app.worker.tasks.healthcheck_task")
+    return {
+        "status": "queued",
+        "task_id": task.id,
     }
