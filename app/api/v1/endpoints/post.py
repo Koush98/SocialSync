@@ -46,28 +46,21 @@ def _request_id(request: Request) -> str:
 
 def _dispatch_publish(post_id: int, tenant_id: str, request_id: str, eta=None):
     try:
-        # Fail fast so clients get an actionable error instead of silent queueing
-        # when no Celery workers are online.
-        worker_heartbeats = celery_app.control.ping(timeout=1.0)
+        # Best-effort worker heartbeat probe. Do not hard-fail on missing ping
+        # because remote-control heartbeats can be flaky across environments.
+        worker_heartbeats = celery_app.control.ping(timeout=3.0)
         if not worker_heartbeats:
-            raise HTTPException(
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail=(
-                    "No background workers are online. "
-                    "Start worker service and retry publishing."
-                ),
+            logger.warning(
+                "publish.worker_ping_empty post_id=%s request_id=%s; continuing to enqueue",
+                post_id,
+                request_id,
             )
-    except HTTPException:
-        raise
     except Exception as exc:
-        logger.exception("publish.queue_healthcheck_failed request_id=%s", request_id)
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=(
-                "Publishing queue is unavailable right now. "
-                "Please retry in a moment."
-            ),
-        ) from exc
+        logger.warning(
+            "publish.queue_healthcheck_failed request_id=%s error=%s; continuing to enqueue",
+            request_id,
+            str(exc),
+        )
 
     kwargs = {"args": [post_id, tenant_id, request_id]}
     if eta is not None:
