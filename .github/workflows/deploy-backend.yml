@@ -13,6 +13,7 @@ on:
       - 'start-backend.sh'
       - 'start-worker.sh'
       - 'start-beat.sh'
+      - 'start-service.sh'
       - 'wait-for-db.sh'
       - 'railway*.json'
       - 'pyproject.toml'

@@ -1,5 +1,6 @@
 #!/bin/bash
 # Railway worker startup script
+set -e
 
 # Use Railway's PORT env var if set
 export PORT=${PORT:-8000}
@@ -15,4 +16,4 @@ echo "DATABASE_URL set: ${DATABASE_URL:+yes}"
 ./wait-for-db.sh
 
 # Start Celery worker
-uv run celery -A app.worker.celery_app.celery_app worker --loglevel=info -E -Q default
+exec uv run celery -A app.worker.celery_app.celery_app worker --loglevel=info -E -Q default

@@ -49,7 +49,7 @@ jobs:
           CLOUDINARY_CLOUD_NAME: ci
           CLOUDINARY_API_KEY: ci
           CLOUDINARY_API_SECRET: ci
-        run: uv run pytest tests/test_auth_deps.py tests/test_post_routes.py tests/test_provider_publishers.py -q
+        run: uv run pytest tests -q
 
   frontend-build:
     name: Frontend Build

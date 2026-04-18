@@ -57,5 +57,9 @@ if [ $DB_READY -eq 0 ]; then
     exit 1
 fi
 
-# Continue with the rest of the script
+# Continue with the rest of the command when provided
+if [ "$#" -gt 0 ]; then
+    exec "$@"
+fi
+
 exit 0

@@ -31,8 +31,10 @@ COPY start-worker.sh .
 RUN chmod +x start-worker.sh
 COPY start-beat.sh .
 RUN chmod +x start-beat.sh
+COPY start-service.sh .
+RUN chmod +x start-service.sh
 
 EXPOSE 8000
 
-# Default command uses startup script (can be overridden by Railway)
-CMD ["./start-backend.sh"]
+# Default command auto-detects backend/worker/beat service role.
+CMD ["./start-service.sh"]

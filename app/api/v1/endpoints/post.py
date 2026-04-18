@@ -46,16 +46,25 @@ def _request_id(request: Request) -> str:
 
 def _dispatch_publish(post_id: int, tenant_id: str, request_id: str, eta=None):
     try:
-        # Best-effort worker heartbeat probe. Do not hard-fail on missing ping
-        # because remote-control heartbeats can be flaky across environments.
+        # Require at least one reachable worker to avoid silently accepting
+        # posts that will never be consumed from the queue.
         worker_heartbeats = celery_app.control.ping(timeout=3.0)
         if not worker_heartbeats:
-            logger.warning(
-                "publish.worker_ping_empty post_id=%s request_id=%s; continuing to enqueue",
+            logger.error(
+                "publish.worker_ping_empty post_id=%s request_id=%s; aborting enqueue",
                 post_id,
                 request_id,
             )
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail=(
+                    "No background workers are online. "
+                    "Start/redeploy worker service and retry."
+                ),
+            )
     except Exception as exc:
+        if isinstance(exc, HTTPException):
+            raise
         logger.warning(
             "publish.queue_healthcheck_failed request_id=%s error=%s; continuing to enqueue",
             request_id,
