@@ -57,7 +57,8 @@ SocialSync/
 ├── wait-for-db.sh               # Worker/beat startup helper
 ├── generate_jwt.py              # Local JWT helper for testing
 ├── .env.example                 # Backend env template
-└── DEPLOYMENT_VERCEL_NGROK.md   # Hosted frontend + local backend guide
+├── DEPLOYMENT_VERCEL_NGROK.md   # Hosted frontend + local backend guide
+└── AWS_PRODUCTION_DEPLOYMENT.md # Production AWS deployment guide
 ```
 
 ## Prerequisites
@@ -279,6 +280,7 @@ docker exec -it socialsync_redis redis-cli FLUSHALL
 For the practical hosted-frontend test setup, use:
 
 - [DEPLOYMENT_VERCEL_NGROK.md](/D:/SocialSyncV1/DEPLOYMENT_VERCEL_NGROK.md)
+- [AWS_PRODUCTION_DEPLOYMENT.md](/D:/SocialSyncV1/AWS_PRODUCTION_DEPLOYMENT.md)
 
 Important limitation:
 
@@ -326,6 +328,7 @@ Use these two documents as the main handoff set:
 
 - [README.md](/D:/SocialSyncV1/README.md)
 - [DEPLOYMENT_VERCEL_NGROK.md](/D:/SocialSyncV1/DEPLOYMENT_VERCEL_NGROK.md)
+- [AWS_PRODUCTION_DEPLOYMENT.md](/D:/SocialSyncV1/AWS_PRODUCTION_DEPLOYMENT.md)
 
 ## Current status
 
