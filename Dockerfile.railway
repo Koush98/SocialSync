@@ -20,11 +20,15 @@ COPY . .
 # Install dependencies
 RUN uv sync --frozen --no-dev
 
-# Make scripts executable
-RUN chmod +x wait-for-db.sh
-RUN chmod +x docker-entrypoint.sh
+# Make startup scripts executable
+RUN chmod +x wait-for-db.sh \
+    && chmod +x docker-entrypoint.sh \
+    && chmod +x start-backend.sh \
+    && chmod +x start-worker.sh \
+    && chmod +x start-beat.sh \
+    && chmod +x start-service.sh
 
 EXPOSE 8000
 
-# Default command (overridden by railway.json)
-CMD ["uv", "run", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Default command auto-detects backend/worker/beat service role.
+CMD ["./start-service.sh"]
