@@ -133,7 +133,7 @@ export default function PostsStudio() {
                 {viewMode === "list" ? (
                   <div className="space-y-3">
                     {filteredPosts.map((post) => (
-                      <button key={post.id} type="button" onClick={() => setSelectedPostId(post.id)} className={`flex w-full items-center gap-3 rounded-[20px] border p-3 text-left transition ${selectedPostId === post.id ? "border-[#e1ca8b] bg-[#fff9e9]" : "border-[#eee4d6] bg-[#fffef9] hover:border-[#e2d4b1]"}`}>>
+                      <button key={post.id} type="button" onClick={() => setSelectedPostId(post.id)} className={`flex w-full items-center gap-3 rounded-[20px] border p-3 text-left transition ${selectedPostId === post.id ? "border-[#e1ca8b] bg-[#fff9e9]" : "border-[#eee4d6] bg-[#fffef9] hover:border-[#e2d4b1]"}`}>
                         <div className={`flex h-12 w-12 items-center justify-center rounded-2xl ${platformTone(post.platform)}`}>
                           <span className="text-xs font-semibold capitalize">{post.platform.slice(0, 2)}</span>
                         </div>
@@ -157,7 +157,7 @@ export default function PostsStudio() {
                 ) : (
                   <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
                     {filteredPosts.map((post) => (
-                      <button key={post.id} type="button" onClick={() => setSelectedPostId(post.id)} className={`overflow-hidden rounded-[22px] border text-left transition ${selectedPostId === post.id ? "border-[#e1ca8b] shadow-[0_12px_28px_rgba(244,180,0,0.14)]" : "border-[#eee4d6] bg-[#fffef9] hover:border-[#e2d4b1]"}`}>>
+                      <button key={post.id} type="button" onClick={() => setSelectedPostId(post.id)} className={`overflow-hidden rounded-[22px] border text-left transition ${selectedPostId === post.id ? "border-[#e1ca8b] shadow-[0_12px_28px_rgba(244,180,0,0.14)]" : "border-[#eee4d6] bg-[#fffef9] hover:border-[#e2d4b1]"}`}>
                         <div className="relative h-36 bg-[linear-gradient(135deg,#2f2f2f,#8d867c)]">
                           <div className="absolute left-3 top-3 rounded-full bg-black/65 px-2 py-1 text-[11px] text-white">{post.media_ids.length ? "Video" : "Post"}</div>
                           <div className="absolute right-3 top-3 rounded-full bg-[#0d1018]/90 px-2 py-1 text-[11px] capitalize text-ink-900">{post.platform}</div>
