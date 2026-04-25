@@ -142,6 +142,38 @@ def list_all_posts(
     db: Session = Depends(get_db),
     tenant_id: str = Depends(get_tenant),
 ):
+    posts = list_posts(db, tenant_id)
+    
+    # Check for overdue scheduled posts and re-dispatch them
+    from app.crud.post import update_post_status
+    now = datetime.now(timezone.utc)
+    for post in posts:
+        if post.status in ["scheduled", "queued"] and post.scheduled_at:
+            scheduled_time = post.scheduled_at
+            if scheduled_time.tzinfo is None:
+                scheduled_time = scheduled_time.replace(tzinfo=timezone.utc)
+            
+            # If post is overdue by more than 1 minute, re-dispatch it
+            if scheduled_time < now and (now - scheduled_time).total_seconds() > 60:
+                logger.info(
+                    "post.overdue_redispatch post_id=%s scheduled_at=%s status=%s",
+                    post.id,
+                    post.scheduled_at,
+                    post.status,
+                )
+                try:
+                    # Update status to queued and re-dispatch
+                    update_post_status(db, tenant_id, post.id, "queued", None)
+                    request_id = "auto-retry"
+                    _dispatch_publish(post.id, tenant_id, request_id)
+                except Exception as e:
+                    logger.error(
+                        "post.overdue_redispatch_failed post_id=%s error=%s",
+                        post.id,
+                        str(e),
+                    )
+    
+    # Refresh the list after potential updates
     return list_posts(db, tenant_id)
 
 
@@ -277,3 +309,52 @@ def cancel_post(
 
     updated_post = update_post_status(db, tenant_id, post_id, "cancelled", None)
     return {"post_id": post_id, "status": updated_post.status if updated_post else "cancelled", "task_id": None}
+
+
+@router.post("/process-overdue", response_model=dict)
+def process_overdue_posts(
+    request: Request,
+    db: Session = Depends(get_db),
+    tenant_id: str = Depends(get_tenant),
+):
+    """
+    Manually trigger processing of all overdue scheduled/queued posts.
+    This is useful when worker was down and posts didn't get published on time.
+    """
+    posts = list_posts(db, tenant_id)
+    now = datetime.now(timezone.utc)
+    processed = []
+    
+    for post in posts:
+        if post.status in ["scheduled", "queued"] and post.scheduled_at:
+            scheduled_time = post.scheduled_at
+            if scheduled_time.tzinfo is None:
+                scheduled_time = scheduled_time.replace(tzinfo=timezone.utc)
+            
+            # If post is overdue, re-dispatch it
+            if scheduled_time < now:
+                try:
+                    request_id = _request_id(request)
+                    update_post_status(db, tenant_id, post.id, "queued", None)
+                    task = _dispatch_publish(post.id, tenant_id, request_id)
+                    processed.append({
+                        "post_id": post.id,
+                        "status": "queued",
+                        "task_id": task.id if task else None,
+                    })
+                    logger.info(
+                        "post.manual_overdue_dispatch post_id=%s scheduled_at=%s",
+                        post.id,
+                        post.scheduled_at,
+                    )
+                except Exception as e:
+                    logger.error(
+                        "post.manual_overdue_dispatch_failed post_id=%s error=%s",
+                        post.id,
+                        str(e),
+                    )
+    
+    return {
+        "message": f"Processed {len(processed)} overdue posts",
+        "processed_posts": processed,
+    }

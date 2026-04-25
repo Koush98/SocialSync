@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ErrorNotice } from "@/components/error-notice";
 import { EditPostModal } from "@/components/edit-post-modal-v2";
 import { PostComposerModal } from "@/components/post-composer-modal-v2";
-import { cancelPost, fetchAccounts, fetchPostMetrics, fetchPosts, publishPostNow } from "@/lib/api";
+import { cancelPost, fetchAccounts, fetchPostMetrics, fetchPosts, processOverduePosts, publishPostNow } from "@/lib/api";
 import { Account, NormalizedPostMetrics, Post, PostLiveMetricsResponse } from "@/lib/types";
 
 type FilterStatus = "all" | "scheduled" | "posted" | "failed" | "cancelled";
@@ -91,8 +91,8 @@ function MetricsRow({ metrics }: { metrics: NormalizedPostMetrics }) {
   return (
     <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-5">
       {cards.map((item) => (
-        <div key={item.label} className="rounded-xl border border-[#e9dfcf] bg-[#0d0b14] px-3 py-2">
-          <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#ffd52a]">{item.label}</div>
+        <div key={item.label} className="rounded-xl border border-[#e9dfcf] bg-[#fff8e8] px-3 py-2">
+          <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#9c7620]">{item.label}</div>
           <div className="mt-1 text-sm font-semibold text-ink-900">{item.value}</div>
         </div>
       ))}
@@ -146,6 +146,7 @@ export default function PostsClient() {
   const [filterStatus, setFilterStatus] = useState<FilterStatus>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [processingOverdue, setProcessingOverdue] = useState(false);
 
   async function load() {
     try {
@@ -237,6 +238,23 @@ export default function PostsClient() {
     }
   }
 
+  async function handleProcessOverdue() {
+    try {
+      setProcessingOverdue(true);
+      setError(null);
+      const result = await processOverduePosts();
+      await load();
+      if (result.processed_posts.length > 0) {
+        // Show success message briefly
+        console.log(`Processed ${result.processed_posts.length} overdue posts`);
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Unable to process overdue posts.");
+    } finally {
+      setProcessingOverdue(false);
+    }
+  }
+
   const accountMap = useMemo(() => new Map(accounts.map(a => [a.id, a])), [accounts]);
 
   const filteredPosts = useMemo(() => {
@@ -283,7 +301,7 @@ export default function PostsClient() {
     <>
       <main className="flex min-h-[calc(100vh-2.5rem)] flex-col">
         {/* Top bar */}
-        <header className="sticky top-0 z-10 border-b border-[#f0e7d7] bg-[#0d1018]/90 backdrop-blur px-5 py-4 sm:px-8">
+        <header className="sticky top-0 z-10 border-b border-[#f0e7d7] bg-[#fff8e8]/90 backdrop-blur px-5 py-4 sm:px-8">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="relative">
               <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-500 text-sm">⌕</span>
@@ -295,9 +313,6 @@ export default function PostsClient() {
                 className="field-input pl-9 pr-4 py-2.5 text-sm w-full sm:w-72"
               />
             </div>
-            <button type="button" onClick={() => setComposerOpen(true)} className="primary-button shrink-0">
-              + New Post
-            </button>
           </div>
         </header>
 
@@ -316,14 +331,32 @@ export default function PostsClient() {
                   </p>
                 )}
               </div>
-              <button
-                type="button"
-                onClick={() => void load()}
-                className="secondary-button px-4 py-2 text-sm"
-                title="Refresh posts"
-              >
-                🔄 Refresh
-              </button>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => void handleProcessOverdue()}
+                  disabled={processingOverdue}
+                  className="secondary-button px-4 py-2 text-sm"
+                  title="Process any posts that missed their scheduled time"
+                >
+                  {processingOverdue ? (
+                    <span className="flex items-center gap-1.5">
+                      <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-ink-900/30 border-t-ink-900" />
+                      Processing...
+                    </span>
+                  ) : (
+                    "⚡ Process Overdue"
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void load()}
+                  className="secondary-button px-4 py-2 text-sm"
+                  title="Refresh posts"
+                >
+                  🔄 Refresh
+                </button>
+              </div>
             </div>
           </div>
 
@@ -354,7 +387,7 @@ export default function PostsClient() {
                 className={`inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-medium transition ${
                   filterStatus === opt.value
                     ? "bg-brand-300 text-ink-900 shadow-sm"
-                    : "border border-[#e8dfce] bg-[#0d1018] text-ink-600 hover:border-brand-200 hover:bg-[#141924]"
+                    : "border border-[#e8dfce] bg-[#fff8e8] text-ink-600 hover:border-brand-200 hover:bg-[#fff3d7]"
                 }`}
               >
                 {opt.label}
@@ -426,18 +459,26 @@ export default function PostsClient() {
                             </div>
 
                             {post.error_message ? (
-                              <div className="mt-3">
-                                <ErrorNotice
-                                  error={post.error_message}
-                                  compact
-                                  fallback={`We couldn't finish this ${post.platform} post.`}
-                                />
+                              <div className="mt-3 rounded-xl border border-[#f5d5d0] bg-[#fff5f3] px-4 py-3">
+                                <div className="flex items-start gap-2">
+                                  <span className="mt-0.5 text-red-500">⚠️</span>
+                                  <div className="min-w-0 flex-1">
+                                    <p className="text-sm font-medium text-[#b64e48] leading-6">
+                                      {post.error_message}
+                                    </p>
+                                    {post.retry_count > 0 && (
+                                      <p className="mt-1 text-xs text-ink-500">
+                                        Attempted {post.retry_count} of {post.max_retries} times
+                                      </p>
+                                    )}
+                                  </div>
+                                </div>
                               </div>
                             ) : null}
 
                             {post.platform_post_id && (
-                              <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-ink-500">
-                                <span>
+                              <div className="mt-3 flex flex-wrap items-center gap-3">
+                                <span className="text-xs text-ink-500">
                                   Platform ID: <span className="font-mono text-ink-700">{post.platform_post_id}</span>
                                 </span>
                                 {post.status === "posted" && livePostUrl ? (
@@ -445,9 +486,9 @@ export default function PostsClient() {
                                     href={livePostUrl}
                                     target="_blank"
                                     rel="noreferrer"
-                                    className="inline-flex items-center gap-1 rounded-full border border-[#e4d9c7] bg-[#0d1018] px-3 py-1 font-medium text-[#8f6f1f] transition hover:border-[#d6c297] hover:bg-[#fff8e6]"
+                                    className="inline-flex items-center gap-2 rounded-full bg-[#ffd52a] px-4 py-2 text-sm font-semibold text-ink-900 shadow-md transition hover:bg-[#ffe566] hover:shadow-lg"
                                   >
-                                    View Live
+                                    🔗 View Live Post
                                   </a>
                                 ) : null}
                               </div>
@@ -455,13 +496,13 @@ export default function PostsClient() {
 
                             {post.status === "posted" && post.platform_post_id ? (
                               metricsLoadingIds[post.id] ? (
-                                <div className="mt-3 rounded-xl border border-[#252030] bg-[#141924] px-3 py-2 text-xs text-ink-500">
+                                <div className="mt-3 rounded-xl border border-[#e8dfce] bg-[#fff8e8] px-3 py-2 text-xs text-ink-500">
                                   Loading engagement metrics...
                                 </div>
                               ) : showMetrics ? (
                                 <MetricsRow metrics={normalizedMetrics} />
                               ) : liveMetrics?.message ? (
-                                <div className="mt-3 rounded-xl border border-[#252030] bg-[#141924] px-3 py-2 text-xs text-ink-500">
+                                <div className="mt-3 rounded-xl border border-[#e8dfce] bg-[#fff8e8] px-3 py-2 text-xs text-ink-500">
                                   Metrics unavailable: {liveMetrics.message}
                                 </div>
                               ) : null
@@ -478,27 +519,41 @@ export default function PostsClient() {
                             >
                               ✏️ Edit
                             </button>
-                            <button
-                              type="button"
-                              onClick={() => void handlePublishNow(post.id)}
-                              disabled={busy || !canPublish}
-                              className="primary-button flex-1 sm:flex-none px-4 py-2 text-xs"
-                            >
-                              {busy ? (
-                                <span className="flex items-center gap-1.5">
-                                  <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-ink-900/30 border-t-ink-900" />
-                                  Working…
-                                </span>
-                              ) : "🚀 Publish Now"}
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => void handleCancel(post.id)}
-                              disabled={busy || !canCancel}
-                              className="secondary-button flex-1 sm:flex-none px-4 py-2 text-xs text-[#b64e48] hover:border-[#3a1515] hover:bg-[#2a100e]"
-                            >
-                              ✕ Cancel
-                            </button>
+                            {canPublish && (
+                              <button
+                                type="button"
+                                onClick={() => void handlePublishNow(post.id)}
+                                disabled={busy || !canPublish}
+                                className="primary-button flex-1 sm:flex-none px-4 py-2 text-xs"
+                              >
+                                {busy ? (
+                                  <span className="flex items-center gap-1.5">
+                                    <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-ink-900/30 border-t-ink-900" />
+                                    Working…
+                                  </span>
+                                ) : "🚀 Publish Now"}
+                              </button>
+                            )}
+                            {canCancel && (
+                              <button
+                                type="button"
+                                onClick={() => void handleCancel(post.id)}
+                                disabled={busy || !canCancel}
+                                className="secondary-button flex-1 sm:flex-none px-4 py-2 text-xs text-[#b64e48] hover:border-[#f5d5d0] hover:bg-[#fff1ef]"
+                              >
+                                ✕ Cancel
+                              </button>
+                            )}
+                            {post.status === "posted" && livePostUrl && (
+                              <a
+                                href={livePostUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="secondary-button flex-1 sm:flex-none px-4 py-2 text-xs inline-flex items-center justify-center gap-1"
+                              >
+                                🔗 View Live
+                              </a>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -507,7 +562,7 @@ export default function PostsClient() {
                 </div>
               </div>
             )) : (
-              <div className="rounded-[24px] border border-dashed border-[#e5dbc8] bg-[#141924] py-16 text-center">
+              <div className="rounded-[24px] border border-dashed border-[#e5dbc8] bg-[#fff8e8] py-16 text-center">
                 <div className="text-4xl mb-4">📭</div>
                 <h3 className="text-base font-semibold text-ink-900">No posts found</h3>
                 <p className="mt-1 text-sm text-ink-500">

@@ -259,6 +259,8 @@ def _raise_provider_error(
     Maps Meta API error codes to specific exception types:
     - code 190: TokenExpiredError
     - code 4: RateLimitError
+    
+    Provides user-friendly error messages for common platform errors.
     """
     try:
         payload: Any = response.json()
@@ -268,27 +270,98 @@ def _raise_provider_error(
     # Extract Meta API error code if available
     error_code = None
     error_message = str(payload)
+    error_type = "unknown"
+    
+    # User-friendly error message mapping
+    user_friendly_messages = {
+        "facebook": {
+            190: "Your Facebook connection has expired. Please reconnect your Facebook account.",
+            4: "Facebook rate limit exceeded. Please wait a few minutes and try again.",
+            10: "The Facebook post content is invalid. Check for unsupported links or formatting.",
+            200: "You don't have permission to post to this Facebook page. Please check permissions.",
+            341: "Facebook duplicate post detected. Please modify your content and try again.",
+        },
+        "instagram": {
+            190: "Your Instagram connection has expired. Please reconnect your Instagram account.",
+            4: "Instagram rate limit exceeded. Please wait a few minutes and try again.",
+            100: "Instagram post failed. The media may be invalid or unsupported.",
+            200: "Instagram permission denied. Please reconnect your account.",
+        },
+        "twitter": {
+            401: "Your X/Twitter connection has expired. Please reconnect your X/Twitter account.",
+            403: "X/Twitter post rejected. The content may violate platform rules or be a duplicate.",
+            429: "X/Twitter rate limit exceeded. Please wait a few minutes and try again.",
+            187: "X/Twitter duplicate post. Please modify your content and try again.",
+        },
+        "linkedin": {
+            401: "Your LinkedIn connection has expired. Please reconnect your LinkedIn account.",
+            403: "LinkedIn permission denied. Please check your page/post permissions.",
+            429: "LinkedIn rate limit exceeded. Please wait a few minutes and try again.",
+        },
+        "youtube": {
+            401: "Your YouTube connection has expired. Please reconnect your YouTube account.",
+            403: "YouTube upload rejected. Please check video requirements and permissions.",
+            429: "YouTube rate limit exceeded. Please wait a few minutes and try again.",
+        },
+    }
 
     if isinstance(payload, dict):
         error_data = payload.get("error", {})
         if isinstance(error_data, dict):
             error_code = error_data.get("code")
             error_message = error_data.get("message", str(payload))
+            error_type = error_data.get("type", "unknown")
+            error_fb_subcode = error_data.get("error_subcode")
 
             # Map Meta API error codes to specific exceptions
             if error_code == 190:
                 raise TokenExpiredError(
-                    f"{provider} token expired: {error_message}"
+                    f"Your {provider.title()} connection has expired. Please reconnect your {provider.title()} account to continue posting."
                 )
             elif error_code == 4:
-                retry_after = error_data.get("error_subcode")
+                retry_after = error_fb_subcode
                 raise RateLimitError(
-                    f"{provider} rate limit exceeded: {error_message}",
+                    f"{provider.title()} rate limit exceeded. Please wait a few minutes and try again.",
                     retry_after=retry_after,
                 )
+            
+            # Check for user-friendly message
+            provider_messages = user_friendly_messages.get(provider, {})
+            if error_code in provider_messages:
+                raise PublishError(
+                    provider_messages[error_code],
+                    retryable=retryable,
+                    error_code=error_code,
+                )
 
+    # Check HTTP status code for user-friendly messages
+    if isinstance(payload, dict):
+        provider_messages = user_friendly_messages.get(provider, {})
+        if response.status_code in provider_messages:
+            raise PublishError(
+                provider_messages[response.status_code],
+                retryable=retryable,
+            )
+
+    # Fallback: Provide contextual error based on HTTP status
+    status_messages = {
+        400: f"{provider.title()} rejected the post. Please check your content and try again.",
+        401: f"Your {provider.title()} connection has expired. Please reconnect your {provider.title()} account.",
+        403: f"You don't have permission to post to {provider.title()}. Please check your account permissions.",
+        404: f"{provider.title()} endpoint not found. The API may have changed.",
+        429: f"{provider.title()} rate limit exceeded. Please wait a few minutes and try again.",
+        500: f"{provider.title()} server error. Please try again later.",
+        502: f"{provider.title()} service is temporarily unavailable. Please try again later.",
+        503: f"{provider.title()} service is temporarily down. Please try again later.",
+    }
+    
+    user_message = status_messages.get(
+        response.status_code,
+        f"{provider.title()} API error: {error_message}"
+    )
+    
     raise ProviderAPIError(
-        f"{provider} API error ({response.status_code}): {error_message}",
+        user_message,
         retryable=retryable,
         error_code=error_code,
     )

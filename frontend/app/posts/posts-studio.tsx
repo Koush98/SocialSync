@@ -101,7 +101,7 @@ export default function PostsStudio() {
 
               <ErrorNotice error={error} fallback="We couldn't load scheduled posts right now." />
 
-              <div className="rounded-[26px] border border-[#eadfcd] bg-[#0d1018] p-4 shadow-[0_10px_24px_rgba(24,24,24,0.05)]">
+              <div className="rounded-[26px] border border-[#eadfcd] bg-[#fff8e8] p-4 shadow-[0_10px_24px_rgba(180,144,34,0.08)]">
                 <div className="grid gap-3 xl:grid-cols-[minmax(0,1.3fr)_1fr_1fr]">
                   <input value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} placeholder="Search by caption or platform" className="field-input rounded-full" />
                   <select value={platformFilter} onChange={(event) => setPlatformFilter(event.target.value)} className="field-input rounded-full">
@@ -129,11 +129,11 @@ export default function PostsStudio() {
                 </div>
               </div>
 
-              <div className="rounded-[26px] border border-[#eadfcd] bg-[#0d1018] p-4 shadow-[0_10px_24px_rgba(24,24,24,0.05)]">
+              <div className="rounded-[26px] border border-[#eadfcd] bg-[#fff8e8] p-4 shadow-[0_10px_24px_rgba(180,144,34,0.08)]">
                 {viewMode === "list" ? (
                   <div className="space-y-3">
                     {filteredPosts.map((post) => (
-                      <button key={post.id} type="button" onClick={() => setSelectedPostId(post.id)} className={`flex w-full items-center gap-3 rounded-[20px] border p-3 text-left transition ${selectedPostId === post.id ? "border-[#e1ca8b] bg-[#fff9e9]" : "border-[#eee4d6] bg-[#0b0d14] hover:border-[#e2d4b1]"}`}>
+                      <button key={post.id} type="button" onClick={() => setSelectedPostId(post.id)} className={`flex w-full items-center gap-3 rounded-[20px] border p-3 text-left transition ${selectedPostId === post.id ? "border-[#e1ca8b] bg-[#fff9e9]" : "border-[#eee4d6] bg-[#fffef9] hover:border-[#e2d4b1]"}`}>>
                         <div className={`flex h-12 w-12 items-center justify-center rounded-2xl ${platformTone(post.platform)}`}>
                           <span className="text-xs font-semibold capitalize">{post.platform.slice(0, 2)}</span>
                         </div>
@@ -152,12 +152,12 @@ export default function PostsStudio() {
                         </div>
                       </button>
                     ))}
-                    {!filteredPosts.length ? <div className="rounded-[20px] border border-dashed border-[#e5dbc8] bg-[#0b0d14] px-4 py-10 text-center text-sm text-ink-500">No posts matched your filters.</div> : null}
+                    {!filteredPosts.length ? <div className="rounded-[20px] border border-dashed border-[#e5dbc8] bg-[#fff8e8] px-4 py-10 text-center text-sm text-ink-500">No posts matched your filters.</div> : null}
                   </div>
                 ) : (
                   <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
                     {filteredPosts.map((post) => (
-                      <button key={post.id} type="button" onClick={() => setSelectedPostId(post.id)} className={`overflow-hidden rounded-[22px] border text-left transition ${selectedPostId === post.id ? "border-[#e1ca8b] shadow-[0_12px_28px_rgba(244,180,0,0.14)]" : "border-[#eee4d6] bg-[#0b0d14] hover:border-[#e2d4b1]"}`}>
+                      <button key={post.id} type="button" onClick={() => setSelectedPostId(post.id)} className={`overflow-hidden rounded-[22px] border text-left transition ${selectedPostId === post.id ? "border-[#e1ca8b] shadow-[0_12px_28px_rgba(244,180,0,0.14)]" : "border-[#eee4d6] bg-[#fffef9] hover:border-[#e2d4b1]"}`}>>
                         <div className="relative h-36 bg-[linear-gradient(135deg,#2f2f2f,#8d867c)]">
                           <div className="absolute left-3 top-3 rounded-full bg-black/65 px-2 py-1 text-[11px] text-white">{post.media_ids.length ? "Video" : "Post"}</div>
                           <div className="absolute right-3 top-3 rounded-full bg-[#0d1018]/90 px-2 py-1 text-[11px] capitalize text-ink-900">{post.platform}</div>
@@ -177,15 +177,17 @@ export default function PostsStudio() {
               </div>
             </div>
 
-            <aside className="rounded-[26px] border border-[#eadfcd] bg-[#0d1018] p-4 shadow-[0_10px_24px_rgba(24,24,24,0.05)] sm:p-5">
+            <aside className="rounded-[26px] border border-[#eadfcd] bg-[#fffef9] p-4 shadow-[0_10px_24px_rgba(180,144,34,0.08)] sm:p-5">
               <div className="mb-4 flex items-center justify-between">
-                <div className="text-xl font-semibold text-ink-900">Post Post</div>
-                <button type="button" className="text-ink-400">×</button>
+                <div className="text-xl font-semibold text-ink-900">Post Details</div>
+                <button type="button" className="text-ink-400 hover:text-ink-900">×</button>
               </div>
               {selectedPost ? (
                 <>
-                  <div className="h-36 rounded-[20px] bg-[linear-gradient(135deg,#2f2f2f,#8d867c)]" />
-                  <p className="mt-4 text-sm leading-6 text-ink-600">{selectedPost.content || "Post preview unavailable."}</p>
+                  <div className="h-36 rounded-[20px] bg-[linear-gradient(135deg,#ffd52a,#ffe566)] flex items-center justify-center">
+                    <span className="text-4xl">📝</span>
+                  </div>
+                  <p className="mt-4 text-sm leading-6 text-ink-700">{selectedPost.content || "Post preview unavailable."}</p>
                   <div className="mt-4">
                     <div className="text-sm font-semibold text-ink-900">Platforms</div>
                     <div className="mt-2 flex gap-2">
@@ -199,7 +201,7 @@ export default function PostsStudio() {
                     <button type="button" onClick={() => void handleDelete(selectedPost.id)} className="secondary-button w-full justify-center py-3">Delete</button>
                   </div>
                 </>
-              ) : <div className="rounded-[20px] border border-dashed border-[#e5dbc8] bg-[#0b0d14] px-4 py-10 text-sm text-ink-500">Select a post to inspect details here.</div>}
+              ) : <div className="rounded-[20px] border border-dashed border-[#e5dbc8] bg-[#fff8e8] px-4 py-10 text-sm text-ink-500">Select a post to inspect details here.</div>}
             </aside>
           </div>
         </div>

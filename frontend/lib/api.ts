@@ -263,3 +263,12 @@ export function cancelPost(postId: number) {
     },
   );
 }
+
+export function processOverduePosts() {
+  return apiFetch<{ message: string; processed_posts: Array<{ post_id: number; status: string; task_id: string | null }> }>(
+    "/api/v1/posts/process-overdue",
+    {
+      method: "POST",
+    },
+  );
+}
