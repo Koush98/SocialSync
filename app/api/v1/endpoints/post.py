@@ -71,8 +71,22 @@ def _dispatch_publish(post_id: int, tenant_id: str, request_id: str, eta=None):
     kwargs = {"args": [post_id, tenant_id, request_id]}
     if eta is not None:
         kwargs["eta"] = eta
+    
+    logger.info(
+        "publish.enqueuing_task post_id=%s eta=%s queue=%s",
+        post_id,
+        eta,
+        "default",
+    )
+    
     try:
-        return celery_app.send_task("app.worker.tasks.publish_post_task", **kwargs)
+        task = celery_app.send_task("app.worker.tasks.publish_post_task", **kwargs)
+        logger.info(
+            "publish.task_enqueued post_id=%s task_id=%s",
+            post_id,
+            task.id,
+        )
+        return task
     except Exception as exc:
         logger.exception("publish.queue_dispatch_failed post_id=%s request_id=%s", post_id, request_id)
         raise HTTPException(
