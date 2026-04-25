@@ -499,7 +499,11 @@ export default function PostsClient() {
                                   >
                                     🔗 View Live Post
                                   </a>
-                                ) : null}
+                                ) : (
+                                  <span className="text-xs text-ink-400">
+                                    (status: {post.status}, hasUrl: {livePostUrl ? "yes" : "no"})
+                                  </span>
+                                )}
                               </div>
                             )}
 
