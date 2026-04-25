@@ -437,6 +437,13 @@ export default function PostsClient() {
 
                     return (
                       <div key={post.id} className="post-card rounded-[22px] border border-[#ece3d3] bg-[#fffcf7] p-4 sm:p-5">
+                        {/* Debug - always show */}
+                        <div className="mb-2 text-[10px] text-blue-600 font-mono bg-blue-50 p-1 rounded">
+                          DEBUG: id={post.id}, status={post.status}, platform={post.platform}, 
+                          platform_post_id={post.platform_post_id || "NULL/UNDEFINED"}, 
+                          livePostUrl={livePostUrl || "NULL"}
+                        </div>
+                        
                         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                           {/* Content area */}
                           <div className="min-w-0 flex-1">
