@@ -1,1 +1,5 @@
-export { DashboardHome as default } from "@/components/dashboard-home";
+import { redirect } from "next/navigation";
+
+export default function Home() {
+  redirect("/posts");
+}

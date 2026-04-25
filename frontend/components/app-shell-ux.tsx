@@ -8,8 +8,6 @@ import { PostComposerModal } from "@/components/post-composer-modal-v2";
 import { clearStoredAuthToken, logoutSession } from "@/lib/api";
 
 const navigation = [
-  { href: "/", label: "Dashboard", icon: "home" },
-  { href: "/create-post", label: "Compose Post", icon: "compose" },
   { href: "/posts", label: "Scheduled Posts", icon: "clock" },
   { href: "/connections", label: "Social Accounts", icon: "spark" },
 ] as const;
@@ -28,8 +26,6 @@ function LogoMark() {
 
 function NavIcon({ icon }: { icon: (typeof navigation)[number]["icon"] }) {
   const shared = { viewBox: "0 0 24 24", className: "h-5 w-5", "aria-hidden": true, fill: "none", stroke: "currentColor", strokeWidth: 1.8, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
-  if (icon === "home") return <svg {...shared}><path d="M4 10.5 12 4l8 6.5" /><path d="M6.5 9.8V19h11V9.8" /></svg>;
-  if (icon === "compose") return <svg {...shared}><path d="M4.5 19.5h4l10-10a2.1 2.1 0 0 0-4-4l-10 10v4Z" /><path d="m13.5 6.5 4 4" /></svg>;
   if (icon === "spark") return <svg {...shared}><path d="M12 3v4M12 17v4M3 12h4M17 12h4" /><path d="m6 6 2 2M16 16l2 2M18 6l-2 2M8 16l-2 2" /></svg>;
   if (icon === "clock") return <svg {...shared}><circle cx="12" cy="12" r="8" /><path d="M12 8v5l3 2" /></svg>;
   return <svg {...shared}><circle cx="12" cy="12" r="3" /><path d="M12 4.5v2.1M12 17.4v2.1M19.5 12h-2.1M6.6 12H4.5M17.3 6.7l-1.5 1.5M8.2 15.8l-1.5 1.5M17.3 17.3l-1.5-1.5M8.2 8.2 6.7 6.7" /></svg>;
@@ -74,9 +70,8 @@ export function AppShellUx({ children }: { children: ReactNode }) {
               <div className="flex items-center gap-3"><LogoMark /><div><div className="font-display text-2xl font-semibold tracking-[-0.06em] text-ink-900">Snapkey</div><p className="text-xs uppercase tracking-[0.2em] text-[#8c6f00]">Workspace menu</p></div></div>
               <button type="button" onClick={() => setMobileMenuOpen(false)} className="secondary-button h-11 w-11 rounded-2xl p-0" aria-label="Close navigation"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><line x1="2" y1="2" x2="14" y2="14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/><line x1="14" y1="2" x2="2" y2="14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg></button>
             </div>
-            <button type="button" onClick={() => { setMobileMenuOpen(false); setComposerOpen(true); }} className="primary-button mb-4 w-full justify-center">+ New Post</button>
             <nav className="space-y-2">{navigation.map((item) => {
-              const active = item.href === "/" ? pathname === "/" : pathname === item.href || pathname?.startsWith(`${item.href}/`);
+              const active = pathname === item.href || pathname?.startsWith(`${item.href}/`);
               return <Link key={item.href} href={item.href} className={`flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium ${active ? "bg-[#fff2b8] text-[#8c6f00]" : "text-ink-700 hover:bg-[#fff7d1] hover:text-ink-900"}`} onClick={() => setMobileMenuOpen(false)}><NavIcon icon={item.icon} /><span className="flex-1">{item.label}</span>{active ? <span className="h-2 w-2 rounded-full bg-brand-300" /> : null}</Link>;
             })}</nav>
             <button type="button" onClick={handleLogout} className="secondary-button mt-6 w-full justify-center py-3 text-sm">Sign Out</button>
@@ -91,7 +86,7 @@ export function AppShellUx({ children }: { children: ReactNode }) {
               <div className="mb-6 flex items-center gap-3"><LogoMark /><div><div className="font-display text-[22px] font-semibold tracking-[-0.06em] text-ink-900">Snapkey</div><div className="text-[10px] uppercase tracking-[0.24em] text-ink-600">Social Suite</div></div></div>
               <nav className="space-y-1.5">
                 {navigation.map((item) => {
-                  const active = item.href === "/" ? pathname === "/" : pathname === item.href || pathname?.startsWith(`${item.href}/`);
+                  const active = pathname === item.href || pathname?.startsWith(`${item.href}/`);
                   return (
                     <Link key={item.href} href={item.href} className={`group flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium transition-all ${active ? "bg-[#fff2b8] text-[#8c6f00] shadow-[0_10px_24px_rgba(245,200,0,0.18)]" : "text-ink-700 hover:bg-[#fff7d1]"}`}>
                       <NavIcon icon={item.icon} />
@@ -104,7 +99,6 @@ export function AppShellUx({ children }: { children: ReactNode }) {
             </div>
 
             <div className="space-y-3">
-              <button type="button" onClick={() => setComposerOpen(true)} className="primary-button w-full justify-center">+ New Post</button>
               <button type="button" onClick={handleLogout} className="secondary-button w-full justify-center">Sign Out</button>
             </div>
           </div>
@@ -115,8 +109,8 @@ export function AppShellUx({ children }: { children: ReactNode }) {
 
       <nav className="fixed inset-x-4 bottom-4 z-40 rounded-[26px] border border-[#f0e2b2] bg-[rgba(255,251,240,0.96)] p-2 shadow-[0_18px_40px_rgba(180,144,34,0.14)] backdrop-blur lg:hidden">
         <div className="grid grid-cols-5 gap-1">
-          {navigation.slice(0, 5).map((item) => {
-            const active = item.href === "/" ? pathname === "/" : pathname === item.href || pathname?.startsWith(`${item.href}/`);
+          {navigation.map((item) => {
+            const active = pathname === item.href || pathname?.startsWith(`${item.href}/`);
             return (
               <Link key={item.href} href={item.href} className={`flex flex-col items-center justify-center rounded-[18px] px-2 py-2 text-[11px] font-medium ${active ? "bg-[#fff2b8] text-[#8c6f00]" : "text-ink-600 hover:bg-[#fff7d1] hover:text-ink-900"}`}>
                 <NavIcon icon={item.icon} />
