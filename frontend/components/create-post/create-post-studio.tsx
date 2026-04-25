@@ -213,6 +213,8 @@ export function CreatePostStudio() {
     }, {} as Record<PlatformName, Account[]>);
   }, [accounts]);
 
+  const totalAccounts = accounts.length;
+
   const totalSelectedAccounts = useMemo(
     () => PLATFORM_ORDER.reduce((count, platform) => count + selectedAccounts[platform].length, 0),
     [selectedAccounts],
@@ -290,6 +292,22 @@ export function CreatePostStudio() {
     });
 
     setExpandedPlatforms((current) => ({ ...current, [platform]: true }));
+  }
+
+  function toggleAllGlobalAccounts(enabled: boolean) {
+    const nextSelectedAccounts = PLATFORM_ORDER.reduce<SelectedAccountsMap>((acc, platform) => {
+      acc[platform] = enabled ? accountsByPlatform[platform].map((account) => account.id) : [];
+      return acc;
+    }, createEmptySelectedAccounts());
+
+    setSelectedAccounts(nextSelectedAccounts);
+    setSelectedPlatforms(enabled ? PLATFORM_ORDER.filter((platform) => accountsByPlatform[platform].length > 0) : []);
+    setExpandedPlatforms((current) =>
+      PLATFORM_ORDER.reduce<Record<string, boolean>>((acc, platform) => {
+        acc[platform] = enabled && accountsByPlatform[platform].length > 0;
+        return acc;
+      }, {}),
+    );
   }
 
   function updatePlatformConfig<K extends keyof PlatformConfigMap[PlatformName]>(
@@ -552,12 +570,14 @@ export function CreatePostStudio() {
           <Sidebar
             platforms={sidebarPlatforms}
             totalSelectedAccounts={totalSelectedAccounts}
+            totalAccounts={totalAccounts}
             groupName={groupName}
             accountGroups={accountGroups}
             onGroupNameChange={setGroupName}
             onSaveGroup={handleSaveGroup}
             onApplyGroup={handleApplyGroup}
             onRemoveGroup={handleRemoveGroup}
+            onSelectAll={toggleAllGlobalAccounts}
             onPlatformToggle={setPlatformEnabled}
             onSelectAllAccounts={toggleAllAccounts}
             onAccountToggle={toggleAccount}

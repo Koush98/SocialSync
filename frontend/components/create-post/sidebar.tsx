@@ -6,12 +6,14 @@ import { PlatformSelector } from "@/components/create-post/platform-selector";
 type Props = {
   platforms: SidebarPlatform[];
   totalSelectedAccounts: number;
+  totalAccounts: number;
   groupName: string;
   accountGroups: SavedAccountGroup[];
   onGroupNameChange: (value: string) => void;
   onSaveGroup: () => void;
   onApplyGroup: (groupId: string) => void;
   onRemoveGroup: (groupId: string) => void;
+  onSelectAll: (enabled: boolean) => void;
   onPlatformToggle: (platformId: SidebarPlatform["id"], enabled: boolean) => void;
   onSelectAllAccounts: (platformId: SidebarPlatform["id"], enabled: boolean) => void;
   onAccountToggle: (
@@ -24,20 +26,23 @@ type Props = {
 export function Sidebar({
   platforms,
   totalSelectedAccounts,
+  totalAccounts,
   groupName,
   accountGroups,
   onGroupNameChange,
   onSaveGroup,
   onApplyGroup,
   onRemoveGroup,
+  onSelectAll,
   onPlatformToggle,
   onSelectAllAccounts,
   onAccountToggle,
 }: Props) {
   const selectedCount = platforms.filter((platform) => platform.selected).length;
+  const allSelected = totalSelectedAccounts === totalAccounts && totalAccounts > 0;
 
   return (
-    <aside className="h-full bg-[#fffdf7] xl:sticky xl:top-6 xl:h-[calc(100vh-8.5rem)]">
+    <aside className="h-full bg-[#fffdf7] xl:sticky xl:top-6 xl:h-[calc(100vh-3rem)]">
       <div className="flex h-full min-h-0 flex-col">
         <div className="border-b border-[#f0e2b2] px-5 py-5">
           <p className="text-[10px] font-medium uppercase tracking-[0.15em] text-[#8c6f00]">
@@ -57,10 +62,24 @@ export function Sidebar({
               {totalSelectedAccounts} account{totalSelectedAccounts === 1 ? "" : "s"} selected
             </span>
           </div>
+
+          {/* Global Select All Button */}
+          <button
+            type="button"
+            onClick={() => onSelectAll(!allSelected)}
+            className={`mt-4 w-full rounded-xl px-4 py-2.5 text-[12px] font-semibold transition-all duration-200 ${
+              allSelected
+                ? "bg-[#fff7d1] text-[#5b4500] border border-[#f0e2b2] hover:bg-[#fff2b8]"
+                : "bg-[#F5C800] text-[#111111] shadow-[0_8px_20px_rgba(245,200,0,0.18)] hover:-translate-y-0.5 hover:bg-[#E6BE3A]"
+            }`}
+          >
+            {allSelected ? "✓ Deselect All" : "Select All Accounts"}
+          </button>
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
-          <section className="mb-4 rounded-2xl border border-[#f0e2b2] bg-[#fff8dc] p-3.5 shadow-[0_10px_28px_rgba(180,144,34,0.08)]">
+        {/* Fixed Account Groups Section */}
+        <div className="border-b border-[#f0e2b2] px-4 py-4">
+          <section className="rounded-2xl border border-[#f0e2b2] bg-[#fff8dc] p-3.5 shadow-[0_10px_28px_rgba(180,144,34,0.08)]">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <h3 className="text-[12px] font-semibold text-[#111111]">Account groups</h3>
@@ -122,7 +141,10 @@ export function Sidebar({
               )}
             </div>
           </section>
+        </div>
 
+        {/* Scrollable Accounts List */}
+        <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
           <div className="space-y-3">
             {platforms.map((platform) => (
               <PlatformSelector
