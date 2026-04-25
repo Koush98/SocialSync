@@ -488,6 +488,9 @@ export default function PostsClient() {
                                 <span className="text-xs text-ink-500">
                                   Platform ID: <span className="font-mono text-ink-700">{post.platform_post_id}</span>
                                 </span>
+                                <span className="text-[10px] text-ink-400">
+                                  [debug: status={post.status}, platform={post.platform}, hasUrl={String(!!livePostUrl)}]
+                                </span>
                                 {post.status === "posted" && livePostUrl ? (
                                   <a
                                     href={livePostUrl}
