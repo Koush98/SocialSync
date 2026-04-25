@@ -185,7 +185,7 @@ export default function AnalyticsClient() {
               Track publishing health, review platform activity, and surface the channels that need attention.
             </p>
           </div>
-          <div className="rounded-2xl border border-[#efe6d5] bg-[#0d0b14] px-4 py-3 text-sm text-ink-600">
+          <div className="rounded-2xl border border-[#f0e2b2] bg-[#fff8dc] px-4 py-3 text-sm text-ink-700">
             Live view of queued, posted, and failed delivery states.
           </div>
         </div>
@@ -283,10 +283,10 @@ export default function AnalyticsClient() {
                     </div>
                   </div>
                   <div className="mt-4 grid grid-cols-2 gap-2 text-xs">
-                    <div className="rounded-xl bg-[#0d0b14] px-3 py-2 text-ink-600">Likes: <span className="font-semibold text-ink-900">{row.metrics.likes}</span></div>
-                    <div className="rounded-xl bg-[#0d0b14] px-3 py-2 text-ink-600">Comments: <span className="font-semibold text-ink-900">{row.metrics.comments}</span></div>
-                    <div className="rounded-xl bg-[#0d0b14] px-3 py-2 text-ink-600">Views: <span className="font-semibold text-ink-900">{row.metrics.views}</span></div>
-                    <div className="rounded-xl bg-[#0d0b14] px-3 py-2 text-ink-600">Shares: <span className="font-semibold text-ink-900">{row.metrics.shares}</span></div>
+                    <div className="rounded-xl bg-[#fff8dc] px-3 py-2 text-ink-700">Likes: <span className="font-semibold text-ink-900">{row.metrics.likes}</span></div>
+                    <div className="rounded-xl bg-[#fff8dc] px-3 py-2 text-ink-700">Comments: <span className="font-semibold text-ink-900">{row.metrics.comments}</span></div>
+                    <div className="rounded-xl bg-[#fff8dc] px-3 py-2 text-ink-700">Views: <span className="font-semibold text-ink-900">{row.metrics.views}</span></div>
+                    <div className="rounded-xl bg-[#fff8dc] px-3 py-2 text-ink-700">Shares: <span className="font-semibold text-ink-900">{row.metrics.shares}</span></div>
                   </div>
                 </div>
               ))}
@@ -317,7 +317,7 @@ export default function AnalyticsClient() {
               <div className="mt-5 space-y-3">
                 {latestFailures.length ? (
                   latestFailures.map((post) => (
-                    <div key={post.id} className="rounded-2xl border border-[#eee4d6] bg-[#0d0b14] p-4">
+                    <div key={post.id} className="rounded-2xl border border-[#f0e2b2] bg-[#fffef9] p-4">
                       <div className="text-sm font-medium text-ink-900">
                         {post.platform} #{post.id}
                       </div>
@@ -327,7 +327,7 @@ export default function AnalyticsClient() {
                     </div>
                   ))
                 ) : (
-                  <div className="rounded-2xl border border-dashed border-[#e5dbc8] bg-[#141924] px-4 py-8 text-sm text-ink-500">
+                  <div className="rounded-2xl border border-dashed border-[#f0e2b2] bg-[#fffef9] px-4 py-8 text-sm text-ink-600">
                     No recent failures. Your publishing flow looks clean right now.
                   </div>
                 )}

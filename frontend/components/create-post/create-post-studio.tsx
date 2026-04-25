@@ -273,6 +273,25 @@ export function CreatePostStudio() {
     setExpandedPlatforms((current) => ({ ...current, [platform]: true }));
   }
 
+  function toggleAllAccounts(platform: PlatformName, enabled: boolean) {
+    const allIds = accountsByPlatform[platform].map((account) => account.id);
+    const nextIds = enabled ? allIds : [];
+
+    setSelectedAccounts((current) => ({
+      ...current,
+      [platform]: nextIds,
+    }));
+
+    setSelectedPlatforms((current) => {
+      if (enabled && nextIds.length) {
+        return current.includes(platform) ? current : [...current, platform];
+      }
+      return current.filter((item) => item !== platform);
+    });
+
+    setExpandedPlatforms((current) => ({ ...current, [platform]: true }));
+  }
+
   function updatePlatformConfig<K extends keyof PlatformConfigMap[PlatformName]>(
     platform: PlatformName,
     key: K,
@@ -474,9 +493,9 @@ export function CreatePostStudio() {
 
   if (loading) {
     return (
-      <main className="px-4 py-8 sm:px-6 lg:px-8">
+      <main className="bg-[#fffaf0] px-4 py-8 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-[1600px]">
-          <div className="rounded-2xl border border-[#1F2937] bg-[#121821] p-8 text-center text-sm text-[#A0AEC0] shadow-[0_24px_70px_rgba(0,0,0,0.34)]">
+          <div className="rounded-3xl border border-[#f1e4ad] bg-[#fffdf7] p-8 text-center text-sm text-[#2f3847] shadow-[0_18px_50px_rgba(180,144,34,0.08)]">
             Loading composer...
           </div>
         </div>
@@ -485,12 +504,12 @@ export function CreatePostStudio() {
   }
 
   return (
-    <main className="bg-[#0d0d0d] px-4 pb-24 pt-6 sm:px-6 lg:px-8">
+    <main className="min-h-screen bg-[#fffaf0] px-4 pb-24 pt-6 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-[1600px]">
-        <section className="relative mb-6 overflow-hidden rounded-2xl bg-[#F5C800] px-7 py-6 shadow-[0_24px_60px_rgba(245,200,0,0.12)]">
+        <section className="relative mb-6 overflow-hidden rounded-[28px] border border-[#f2d75c] bg-[#F5C800] px-7 py-6 shadow-[0_18px_45px_rgba(245,200,0,0.22)]">
           <div className="max-w-3xl">
-            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-[rgba(0,0,0,0.45)]">
-                Content Studio
+            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-[rgba(0,0,0,0.48)]">
+              Content Studio
             </p>
             <h1 className="mt-3 text-2xl font-semibold text-[#111111]">
               Create & Publish Content
@@ -511,25 +530,25 @@ export function CreatePostStudio() {
         </section>
 
         {message ? (
-          <div className="mb-4 rounded-2xl border border-[#3A2F12] bg-[#201A0B] px-4 py-3 text-sm text-[#FFD84D]">
+          <div className="mb-4 rounded-2xl border border-[#efd98a] bg-[#fff5c8] px-4 py-3 text-sm font-medium text-[#5b4500] shadow-[0_10px_24px_rgba(245,200,0,0.14)]">
             {message}
           </div>
         ) : null}
         {error ? (
-          <div className="mb-4 flex items-center gap-2 border-l-[3px] border-[#E24B4A] bg-[#1f1010] px-6 py-2.5">
+          <div className="mb-4 flex items-center gap-2 border-l-[3px] border-[#E24B4A] bg-[#fff1f1] px-6 py-2.5">
             <span className="h-1.5 w-1.5 rounded-full bg-[#E24B4A]" />
-            <p className="text-xs text-[#F09595]">{error}</p>
+            <p className="text-xs text-[#c24646]">{error}</p>
             <button
               type="button"
               onClick={() => setError(null)}
-              className="ml-auto text-[11px] text-[#F09595] underline"
+              className="ml-auto text-[11px] text-[#c24646] underline"
             >
               See logs
             </button>
           </div>
         ) : null}
 
-        <div className="mt-5 grid gap-0 xl:grid-cols-[260px_minmax(0,1fr)]">
+        <div className="mt-5 overflow-hidden rounded-[28px] border border-[#f0e2b2] bg-[#fffdf8] shadow-[0_20px_60px_rgba(180,144,34,0.10)] xl:grid xl:grid-cols-[300px_minmax(0,1fr)] xl:items-start">
           <Sidebar
             platforms={sidebarPlatforms}
             totalSelectedAccounts={totalSelectedAccounts}
@@ -540,10 +559,11 @@ export function CreatePostStudio() {
             onApplyGroup={handleApplyGroup}
             onRemoveGroup={handleRemoveGroup}
             onPlatformToggle={setPlatformEnabled}
+            onSelectAllAccounts={toggleAllAccounts}
             onAccountToggle={toggleAccount}
           />
 
-          <div className="space-y-6 border-l border-[rgba(255,255,255,0.08)]">
+          <div className="space-y-6 xl:border-l xl:border-[#f0e2b2]">
             <PostEditor
               caption={caption}
               hashtags={hashtags}
@@ -588,16 +608,13 @@ export function CreatePostStudio() {
         </div>
       </div>
 
-      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-[rgba(255,255,255,0.08)] bg-[#0d0d0d]">
-        <div className="mx-auto flex max-w-[1600px] justify-between gap-2.5 px-4 sm:px-6 py-3">
-          <div className="text-xs text-[rgba(255,255,255,0.5)] hidden sm:block">
-            {selectedPlatforms.length} platform{selectedPlatforms.length !== 1 ? 's' : ''} selected
-          </div>
-          <div className="flex gap-2.5 ml-auto">
+      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-[#f0e2b2] bg-[rgba(255,251,240,0.96)] backdrop-blur">
+        <div className="mx-auto flex max-w-[1600px] justify-end gap-2.5 px-6 py-3">
+          <div className="flex gap-2.5">
             <button
               type="button"
               onClick={() => router.push("/")}
-              className="rounded-lg border border-[rgba(255,255,255,0.15)] bg-transparent px-4 sm:px-[18px] py-[9px] text-[13px] text-[rgba(255,255,255,0.5)] transition-all duration-200 hover:-translate-y-0.5 hover:border-[rgba(255,255,255,0.25)] hover:text-white whitespace-nowrap"
+              className="rounded-xl border border-[#eadba6] bg-[#fffef9] px-[18px] py-[9px] text-[13px] font-medium text-[#1f2937] transition-all duration-200 hover:-translate-y-0.5 hover:border-[#d8c36e] hover:text-[#111111]"
             >
               Cancel
             </button>
@@ -605,7 +622,7 @@ export function CreatePostStudio() {
               type="button"
               onClick={() => void handleSubmit()}
               disabled={submitting}
-              className="rounded-lg bg-[#F5C800] px-4 sm:px-5 py-[9px] text-[13px] font-medium text-[#111111] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#E6BE3A] disabled:cursor-not-allowed disabled:opacity-60 whitespace-nowrap"
+              className="rounded-xl bg-[#F5C800] px-5 py-[9px] text-[13px] font-medium text-[#111111] shadow-[0_10px_24px_rgba(245,200,0,0.28)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#E6BE3A] disabled:cursor-not-allowed disabled:opacity-60"
             >
               {submitting ? "Creating..." : "Create Post"}
             </button>

@@ -27,7 +27,7 @@ function BellIcon() {
 
 function ChartCard({ title, subtitle, children }: { title: string; subtitle: string; children: React.ReactNode }) {
   return (
-    <div className="rounded-[26px] border border-[#1a2030] bg-[#0d1118] p-4 shadow-[0_12px_28px_rgba(0,0,0,0.24)] sm:p-5">
+    <div className="rounded-[26px] border border-[#f0e2b2] bg-[#fffef9] p-4 shadow-[0_12px_28px_rgba(180,144,34,0.10)] sm:p-5">
       <div className="mb-4">
         <div className="text-xl font-semibold text-ink-900">{title}</div>
         <p className="text-sm text-ink-700">{subtitle}</p>
@@ -105,7 +105,7 @@ export function DashboardHome() {
   return (
     <>
       <main className="min-h-[calc(100vh-2.5rem)] px-4 py-4 sm:px-5 lg:px-6">
-        <div className="rounded-[30px] border border-[#1a2030] bg-[linear-gradient(180deg,#0c1016_0%,#0b0f15_100%)] p-4 shadow-[0_18px_48px_rgba(0,0,0,0.28)] sm:p-5 lg:p-6">
+        <div className="rounded-[30px] border border-[#f0e2b2] bg-[linear-gradient(180deg,#fffef9_0%,#fff8e8_100%)] p-4 shadow-[0_18px_48px_rgba(180,144,34,0.10)] sm:p-5 lg:p-6">
           <ErrorNotice error={error} fallback="We couldn't load the dashboard right now." />
 
           <div className="grid gap-5 xl:grid-cols-[minmax(0,1.55fr)_320px]">
@@ -124,21 +124,21 @@ export function DashboardHome() {
                 </div>
 
                 <div className="flex items-center gap-3 self-end lg:self-auto">
-                  <button type="button" className="relative flex h-12 w-12 items-center justify-center rounded-2xl border border-[#1e2535] bg-[#0d111a] text-ink-900 shadow-[0_10px_24px_rgba(0,0,0,0.18)]">
+                  <button type="button" className="relative flex h-12 w-12 items-center justify-center rounded-2xl border border-[#eadba6] bg-[#fffef9] text-ink-900 shadow-[0_10px_24px_rgba(180,144,34,0.10)]">
                     <BellIcon />
                     <span className="absolute -right-1 -top-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-[#ffd52a] px-1 text-[11px] font-semibold text-[#09090e]">3</span>
                   </button>
-                  <div className="hidden rounded-full border border-[#1e2535] bg-[#0d111a] px-3 py-2 text-sm font-medium text-ink-900 shadow-[0_8px_18px_rgba(0,0,0,0.16)] sm:flex sm:items-center sm:gap-3">
+                  <div className="hidden rounded-full border border-[#eadba6] bg-[#fffef9] px-3 py-2 text-sm font-medium text-ink-900 shadow-[0_8px_18px_rgba(180,144,34,0.08)] sm:flex sm:items-center sm:gap-3">
                     <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[linear-gradient(135deg,#ffd52a,#f5a623)] text-sm font-semibold text-[#09090e]">SJ</div>
                     <span>Sarah Jenkins</span>
                   </div>
                 </div>
               </div>
 
-              <div className="rounded-[28px] border border-[#1e2535] bg-[linear-gradient(90deg,#121924_0%,#131925_62%,rgba(255,209,43,0.2)_100%)] px-5 py-6 shadow-[0_16px_38px_rgba(0,0,0,0.24)]">
+              <div className="rounded-[28px] border border-[#f0e2b2] bg-[linear-gradient(90deg,#fffef9_0%,#fff8e8_62%,rgba(255,209,43,0.24)_100%)] px-5 py-6 shadow-[0_16px_38px_rgba(180,144,34,0.10)]">
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                   <div>
-                    <div className="inline-flex rounded-full border border-[#1a2a1e] bg-[#0d1a14] px-3 py-1 text-[11px] font-semibold text-[#ffd52a]">All systems operational</div>
+                    <div className="inline-flex rounded-full border border-[#e5ca61] bg-[#fff2b8] px-3 py-1 text-[11px] font-semibold text-[#8c6f00]">All systems operational</div>
                     <h1 className="mt-4 font-display text-3xl font-semibold tracking-[-0.06em] text-ink-900 sm:text-4xl">Good evening, <span className="text-[#ffd52a]">Karan</span>.</h1>
                     <p className="mt-2 max-w-2xl text-sm leading-6 text-ink-700">You have {scheduledPosts.length} posts scheduled and engagement is trending upward across your connected channels.</p>
                     <p className="mt-1 text-sm font-semibold text-[#22d48a]">+8.1% this week</p>
@@ -152,7 +152,7 @@ export function DashboardHome() {
 
               <div className="grid gap-4 sm:grid-cols-2 2xl:grid-cols-4">
                 {metricCards.map((card) => (
-                  <div key={card.label} className="rounded-[24px] border border-[#1f2531] bg-[#0c1016] p-4 shadow-[0_10px_24px_rgba(0,0,0,0.2)]">
+                  <div key={card.label} className="rounded-[24px] border border-[#f0e2b2] bg-[#fffef9] p-4 shadow-[0_10px_24px_rgba(180,144,34,0.08)]">
                     <div className="flex items-start justify-between gap-3">
                       <div>
                         <div className="text-[11px] font-medium uppercase tracking-[0.14em] text-ink-600">{card.label}</div>
@@ -203,12 +203,12 @@ export function DashboardHome() {
             </div>
 
             <div className="space-y-4">
-              <div className="rounded-[26px] border border-[#1a2030] bg-[#0d1118] p-4 shadow-[0_12px_28px_rgba(0,0,0,0.24)] sm:p-5">
+                <div className="rounded-[26px] border border-[#f0e2b2] bg-[#fffef9] p-4 shadow-[0_12px_28px_rgba(180,144,34,0.10)] sm:p-5">
                 <div className="mb-4 text-2xl font-semibold text-ink-900">Upcoming Posts</div>
                 <div className="space-y-3">
                   {upcomingPosts.length ? (
                     upcomingPosts.map((post) => (
-                      <div key={post.id} className="flex items-center gap-3 rounded-[20px] border border-[#1b2030] bg-[#0a0d12] p-3">
+                      <div key={post.id} className="flex items-center gap-3 rounded-[20px] border border-[#f0e2b2] bg-[#fffef9] p-3">
                         <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,#ffd52a,#f5c400)] text-sm font-semibold capitalize text-[#09090e]">
                           {post.platform.slice(0, 2)}
                         </div>
@@ -222,12 +222,12 @@ export function DashboardHome() {
                       </div>
                     ))
                   ) : (
-                    <div className="rounded-[20px] border border-dashed border-[#242d3c] bg-[#0a0d12] px-4 py-8 text-sm text-ink-700">No upcoming posts in the queue right now.</div>
+                    <div className="rounded-[20px] border border-dashed border-[#f0e2b2] bg-[#fffef9] px-4 py-8 text-sm text-ink-700">No upcoming posts in the queue right now.</div>
                   )}
                 </div>
               </div>
 
-              <div className="rounded-[26px] border border-[#1a2030] bg-[#0d1118] p-4 shadow-[0_12px_28px_rgba(0,0,0,0.24)] sm:p-5">
+              <div className="rounded-[26px] border border-[#f0e2b2] bg-[#fffef9] p-4 shadow-[0_12px_28px_rgba(180,144,34,0.10)] sm:p-5">
                 <div className="mb-4 text-2xl font-semibold text-ink-900">Recent Activity</div>
                 <div className="space-y-3">
                   {recentActivity.length ? (
@@ -246,7 +246,7 @@ export function DashboardHome() {
                       </div>
                     ))
                   ) : (
-                    <div className="rounded-[20px] border border-dashed border-[#242d3c] bg-[#0a0d12] px-4 py-8 text-sm text-ink-700">Activity will appear here once posts start moving.</div>
+                    <div className="rounded-[20px] border border-dashed border-[#f0e2b2] bg-[#fffef9] px-4 py-8 text-sm text-ink-700">Activity will appear here once posts start moving.</div>
                   )}
                 </div>
               </div>

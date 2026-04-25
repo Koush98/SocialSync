@@ -44,9 +44,9 @@ function Field({
 }) {
   return (
     <div>
-      <label className="mb-2 block text-sm font-medium text-[#d8e0ee]">{label}</label>
+      <label className="mb-2 block text-sm font-semibold text-[#1f2937]">{label}</label>
       {children}
-      {hint ? <p className="mt-2 text-xs leading-5 text-[#8693a9]">{hint}</p> : null}
+      {hint ? <p className="mt-2 text-xs leading-5 text-[#344054]">{hint}</p> : null}
     </div>
   );
 }
@@ -63,20 +63,23 @@ function ToggleCard({
   onChange: (checked: boolean) => void;
 }) {
   return (
-    <label className="flex items-start gap-3 rounded-[22px] border border-[#1f2734] bg-[#0d1219] p-4">
+    <label className="flex items-start gap-3 rounded-2xl border border-[#eadba6] bg-[#fffef9] p-4">
       <input
         type="checkbox"
         checked={checked}
         onChange={(event) => onChange(event.target.checked)}
-        className="mt-1 h-4 w-4 rounded border-[#364153] bg-transparent text-[#ffd24b] focus:ring-[#ffd24b]"
+        className="mt-1 h-4 w-4 rounded border-[#d8c36e] bg-white text-[#ffd24b] focus:ring-[#ffd24b]"
       />
       <div>
-        <div className="text-sm font-medium text-white">{title}</div>
-        <div className="mt-1 text-xs leading-5 text-[#8f9cb2]">{description}</div>
+        <div className="text-sm font-semibold text-[#111111]">{title}</div>
+        <div className="mt-1 text-xs leading-5 text-[#344054]">{description}</div>
       </div>
     </label>
   );
 }
+
+const inputClassName =
+  "w-full rounded-2xl border border-[#eadba6] bg-[#fffef9] px-4 py-3 text-sm text-[#111111] outline-none transition-all duration-200 placeholder:text-[#6b7280] focus:border-[#F5C800] focus:bg-white focus:shadow-[0_0_0_4px_rgba(245,200,0,0.16)]";
 
 export function PlatformSettings({
   selectedPlatforms,
@@ -88,26 +91,26 @@ export function PlatformSettings({
   onConfigChange,
 }: Props) {
   return (
-    <section className="rounded-2xl border border-[#1F2937] bg-[#121821] p-5 shadow-[0_24px_70px_rgba(0,0,0,0.34)] sm:p-6">
-      <div className="border-b border-[#1f2734] pb-5">
-        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#FFD84D]">
+    <section className="mx-6 mb-6 rounded-[24px] border border-[#f0e2b2] bg-[#fffdf8] p-5 shadow-[0_16px_40px_rgba(180,144,34,0.08)] sm:p-6">
+      <div className="border-b border-[#f0e2b2] pb-5">
+        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#c89a00]">
           Step 2
         </p>
-        <h2 className="mt-2 text-2xl font-semibold tracking-[-0.04em] text-white">
+        <h2 className="mt-2 text-2xl font-semibold tracking-[-0.04em] text-[#111111]">
           Platform-specific settings
         </h2>
-        <p className="mt-2 text-sm leading-6 text-[#A0AEC0]">
+        <p className="mt-2 text-sm leading-6 text-[#344054]">
           These cards stay empty until a platform is selected, so the interface only expands when it actually needs to.
         </p>
       </div>
 
       {!selectedPlatforms.length ? (
-        <div className="mt-5 rounded-2xl border border-dashed border-[#2B3340] bg-[#0F141B] px-6 py-12 text-center">
-          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-xl bg-[#201A0B] text-[#FFD84D]">
+        <div className="mt-5 rounded-2xl border border-dashed border-[#f0e2b2] bg-[#fffef9] px-6 py-12 text-center">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-xl bg-[#fff7cf] text-[#c89a00]">
             <span className="text-lg">+</span>
           </div>
-          <h3 className="mt-4 text-lg font-semibold text-white">No platform settings yet</h3>
-          <p className="mt-2 text-sm leading-6 text-[#A0AEC0]">
+          <h3 className="mt-4 text-lg font-semibold text-[#111111]">No platform settings yet</h3>
+          <p className="mt-2 text-sm leading-6 text-[#344054]">
             Select one or more platforms from the sidebar and only those configuration panels will appear here.
           </p>
         </div>
@@ -124,12 +127,12 @@ export function PlatformSettings({
             return (
               <article
                 key={platform}
-                className="overflow-hidden rounded-2xl border border-[#1F2937] bg-[#0F141B] shadow-[0_12px_30px_rgba(0,0,0,0.2)]"
+                className="overflow-hidden rounded-2xl border border-[#f0e2b2] bg-[#fffef9] shadow-[0_10px_28px_rgba(180,144,34,0.08)]"
               >
                 <button
                   type="button"
                   onClick={() => onToggleExpand(platform)}
-                  className="flex w-full items-center justify-between gap-4 px-5 py-4 text-left transition-all duration-200 hover:bg-[#121821]"
+                  className="flex w-full items-center justify-between gap-4 px-5 py-4 text-left transition-all duration-200 hover:bg-[#fff7d1]"
                 >
                   <div className="flex min-w-0 items-center gap-3">
                     <div
@@ -138,17 +141,17 @@ export function PlatformSettings({
                       <PlatformLogo platform={platform} className="h-5 w-5" />
                     </div>
                     <div className="min-w-0">
-                      <h3 className="text-base font-semibold text-white">
+                      <h3 className="text-base font-semibold text-[#111111]">
                         {PLATFORM_LABELS[platform]}
                       </h3>
-                      <p className="mt-1 truncate text-sm text-[#8f9cb2]">
+                      <p className="mt-1 truncate text-sm text-[#344054]">
                         {accountNames.length
                           ? accountNames.join(", ")
                           : "No accounts selected"}
                       </p>
                     </div>
                   </div>
-                  <span className="text-sm text-[#FFD84D]">{expanded ? "Hide" : "Show"}</span>
+                  <span className="text-sm font-medium text-[#c89a00]">{expanded ? "Hide" : "Show"}</span>
                 </button>
 
                 <div
@@ -157,7 +160,7 @@ export function PlatformSettings({
                   }`}
                 >
                   <div className="overflow-hidden">
-                    <div className="border-t border-[#1f2734] px-5 py-5">
+                    <div className="border-t border-[#f0e2b2] px-5 py-5">
                       <div className="grid gap-4 md:grid-cols-2">
                         <Field
                           label="Schedule"
@@ -169,19 +172,19 @@ export function PlatformSettings({
                             onChange={(event) =>
                               onConfigChange(platform, "schedule", event.target.value)
                             }
-                            className="field-input"
+                            className={inputClassName}
                           />
                         </Field>
 
-                        <div className="rounded-xl border border-[#1F2937] bg-[#121821] p-4">
-                          <div className="text-xs font-semibold uppercase tracking-[0.18em] text-[#FFD84D]">
+                        <div className="rounded-xl border border-[#f0e2b2] bg-[#fff8dc] p-4">
+                          <div className="text-xs font-semibold uppercase tracking-[0.18em] text-[#c89a00]">
                             Active destinations
                           </div>
                           <div className="mt-3 flex flex-wrap gap-2">
                             {accountNames.map((name) => (
                               <span
                                 key={name}
-                                className="rounded-full border border-[#3A2F12] bg-[#201A0B] px-3 py-1.5 text-xs font-medium text-[#FFD84D]"
+                                className="rounded-full border border-[#e5ca61] bg-[#ffe98e] px-3 py-1.5 text-xs font-semibold text-[#5b4500]"
                               >
                                 {name}
                               </span>
@@ -198,7 +201,7 @@ export function PlatformSettings({
                               onChange={(event) =>
                                 onConfigChange(platform, "facebookPageId", event.target.value)
                               }
-                              className="field-input"
+                              className={inputClassName}
                             >
                               <option value="default">Use selected account page</option>
                               <option value="cross-post">Cross-post to paired page</option>
@@ -214,7 +217,7 @@ export function PlatformSettings({
                                   event.target.value as typeof config.facebookVisibility,
                                 )
                               }
-                              className="field-input"
+                              className={inputClassName}
                             >
                               <option value="public">Public</option>
                               <option value="friends">Friends</option>
@@ -231,7 +234,7 @@ export function PlatformSettings({
                                   event.target.value as typeof config.facebookCta,
                                 )
                               }
-                              className="field-input"
+                              className={inputClassName}
                             >
                               <option value="none">No CTA</option>
                               <option value="learn_more">Learn more</option>
@@ -257,7 +260,7 @@ export function PlatformSettings({
                                   event.target.value as typeof config.instagramCaptionStyle,
                                 )
                               }
-                              className="field-input"
+                              className={inputClassName}
                             >
                               <option value="balanced">Balanced</option>
                               <option value="clean">Minimal</option>
@@ -271,7 +274,7 @@ export function PlatformSettings({
                                 onConfigChange(platform, "instagramHashtags", event.target.value)
                               }
                               placeholder="#product, #launch"
-                              className="field-input"
+                              className={inputClassName}
                             />
                           </Field>
                           <Field label="Post type">
@@ -284,7 +287,7 @@ export function PlatformSettings({
                                   event.target.value as typeof config.instagramPostType,
                                 )
                               }
-                              className="field-input"
+                              className={inputClassName}
                             >
                               <option value="post">Post</option>
                               <option value="reel">Reel</option>
@@ -310,7 +313,7 @@ export function PlatformSettings({
                                       event.target.value,
                                     )
                                   }
-                                  className="field-input min-h-[124px] resize-none"
+                                  className={`${inputClassName} min-h-[124px] resize-none`}
                                 />
                               </Field>
                             ) : null}
@@ -330,7 +333,7 @@ export function PlatformSettings({
                                   event.target.value as typeof config.linkedinAudience,
                                 )
                               }
-                              className="field-input"
+                              className={inputClassName}
                             >
                               <option value="PUBLIC">Public</option>
                               <option value="CONNECTIONS">Connections</option>
@@ -346,7 +349,7 @@ export function PlatformSettings({
                                   event.target.value as typeof config.linkedinEntityType,
                                 )
                               }
-                              className="field-input"
+                              className={inputClassName}
                             >
                               <option value="profile">Profile</option>
                               <option value="page">Page</option>
@@ -359,7 +362,7 @@ export function PlatformSettings({
                                 onConfigChange(platform, "linkedinHashtags", event.target.value)
                               }
                               placeholder="#b2b, #founders"
-                              className="field-input"
+                              className={inputClassName}
                             />
                           </Field>
                         </div>
@@ -377,7 +380,7 @@ export function PlatformSettings({
                                   event.target.value as typeof config.twitterReplySettings,
                                 )
                               }
-                              className="field-input"
+                              className={inputClassName}
                             >
                               <option value="everyone">Everyone</option>
                               <option value="mentionedUsers">Mentioned users</option>
@@ -401,7 +404,7 @@ export function PlatformSettings({
                       platform === "blogger" ||
                       platform === "google_business" ||
                       platform === "wordpress" ? (
-                        <div className="mt-4 rounded-2xl border border-[#1F2937] bg-[#121821] p-4 text-sm leading-6 text-[#A0AEC0]">
+                        <div className="mt-4 rounded-2xl border border-[#f0e2b2] bg-[#fff8dc] p-4 text-sm leading-6 text-[#344054]">
                           This platform is selected, but advanced controls have been intentionally kept minimal for now. The post will still use the chosen account(s), shared content, selected media, and schedule above.
                         </div>
                       ) : null}

@@ -48,7 +48,7 @@ function MediaThumbnail({ asset }: { asset: MediaAsset }) {
   }
 
   return (
-    <div className="flex h-10 w-10 items-center justify-center rounded-[8px] bg-[rgba(255,255,255,0.06)] text-[10px] font-medium uppercase text-[rgba(255,255,255,0.5)]">
+    <div className="flex h-10 w-10 items-center justify-center rounded-[8px] bg-[#fff2b8] text-[10px] font-semibold uppercase text-[#5b4500]">
       {asset.file_type}
     </div>
   );
@@ -73,6 +73,7 @@ export function PostEditor({
   onApplyAiAssist,
 }: Props) {
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const selectedMediaCount = selectedMediaIds.length;
 
   function handleDrop(event: DragEvent<HTMLButtonElement>) {
     event.preventDefault();
@@ -85,22 +86,22 @@ export function PostEditor({
   }
 
   return (
-    <section className="bg-[#0d0d0d] px-6 py-5">
+    <section className="bg-[#fffdf8] px-6 py-6">
       <div className="flex items-center gap-2">
         <span className="rounded-[4px] bg-[rgba(56,139,253,0.12)] px-2 py-[3px] text-[10px] font-medium uppercase tracking-[1px] text-[#58a6ff]">
           Step 1
         </span>
-        <h2 className="text-[16px] font-medium text-white">Create the core post</h2>
+        <h2 className="text-[16px] font-semibold text-[#111111]">Create the core post</h2>
         <button
           type="button"
           onClick={onAiPanelToggle}
-          className="ml-auto rounded-md border border-[rgba(255,255,255,0.1)] bg-[rgba(255,255,255,0.06)] px-2.5 py-1 text-[11px] text-[rgba(255,255,255,0.5)] transition-all duration-200 hover:-translate-y-0.5 hover:text-white"
+          className="ml-auto rounded-lg border border-[#eadba6] bg-[#fff7d1] px-2.5 py-1 text-[11px] font-medium text-[#5b4500] transition-all duration-200 hover:-translate-y-0.5 hover:border-[#d8c36e] hover:text-[#111111]"
         >
           AI assist
         </button>
       </div>
 
-      <p className="mb-4 mt-3 text-[12px] leading-[1.5] text-[rgba(255,255,255,0.45)]">
+      <p className="mb-4 mt-3 text-[12px] leading-[1.5] text-[#344054]">
         Draft the core message here, attach media, and keep the rest of the experience focused on the platforms you actually selected.
       </p>
 
@@ -110,7 +111,7 @@ export function PostEditor({
         }`}
       >
         <div className="overflow-hidden">
-          <div className="grid gap-3 rounded-[10px] border border-[rgba(255,255,255,0.08)] bg-[#1a1a1a] p-3 sm:grid-cols-3">
+          <div className="grid gap-3 rounded-2xl border border-[#f0e2b2] bg-[#fff8dc] p-3 sm:grid-cols-3">
             {AI_ASSIST_ACTIONS.map((action) => (
               <button
                 key={action.id}
@@ -118,10 +119,10 @@ export function PostEditor({
                 onClick={() => {
                   startTransition(() => onApplyAiAssist(action.id));
                 }}
-                className="rounded-[10px] border border-[rgba(255,255,255,0.08)] bg-[#0d0d0d] p-3 text-left transition-all duration-200 hover:-translate-y-0.5 hover:bg-[rgba(255,255,255,0.04)]"
+                className="rounded-xl border border-[#eadba6] bg-[#fffef9] p-3 text-left transition-all duration-200 hover:-translate-y-0.5 hover:border-[#efcf59] hover:bg-[#fff7d1]"
               >
-                <div className="text-[12px] font-medium text-white">{action.label}</div>
-                <div className="mt-1 text-[10px] leading-[1.5] text-[rgba(255,255,255,0.45)]">
+                <div className="text-[12px] font-semibold text-[#111111]">{action.label}</div>
+                <div className="mt-1 text-[10px] leading-[1.5] text-[#344054]">
                   {action.description}
                 </div>
               </button>
@@ -131,16 +132,16 @@ export function PostEditor({
       </div>
 
       <div>
-        <label className="mb-1.5 block text-[10px] font-medium tracking-[0.5px] text-[rgba(255,255,255,0.4)]">
+        <label className="mb-1.5 block text-[10px] font-semibold tracking-[0.5px] text-[#8c6f00]">
           CAPTION
         </label>
         <textarea
           value={caption}
           onChange={(event) => onCaptionChange(event.target.value)}
           placeholder="Write your post copy here. Keep it clear, then tailor each platform only when needed."
-          className="h-[100px] w-full resize-none rounded-[10px] border border-[rgba(255,255,255,0.08)] bg-[#1a1a1a] px-3 py-3 text-[13px] leading-[1.6] text-white outline-none placeholder:text-[rgba(255,255,255,0.35)]"
+          className="h-[120px] w-full resize-none rounded-2xl border border-[#eadba6] bg-[#fffef9] px-4 py-3 text-[13px] leading-[1.6] text-[#111111] outline-none transition-all duration-200 placeholder:text-[#6b7280] focus:border-[#F5C800] focus:bg-white focus:shadow-[0_0_0_4px_rgba(245,200,0,0.16)]"
         />
-        <div className="mb-3.5 mt-1 flex items-center justify-between text-[10px] text-[rgba(255,255,255,0.3)]">
+        <div className="mb-3.5 mt-1 flex items-center justify-between text-[10px] text-[#344054]">
           <span>{caption.length} characters</span>
           <span>Supports one-to-many publishing</span>
         </div>
@@ -148,47 +149,54 @@ export function PostEditor({
 
       <div className="mb-3.5 grid gap-3 sm:grid-cols-2">
         <div>
-          <label className="mb-1.5 block text-[10px] font-medium tracking-[0.5px] text-[rgba(255,255,255,0.4)]">
+          <label className="mb-1.5 block text-[10px] font-semibold tracking-[0.5px] text-[#8c6f00]">
             HASHTAGS
           </label>
           <input
             value={hashtags}
             onChange={(event) => onHashtagsChange(event.target.value)}
             placeholder="#launch, #growth"
-            className="w-full rounded-[10px] border border-[rgba(255,255,255,0.08)] bg-[#1a1a1a] px-3 py-[9px] text-[12px] text-white outline-none placeholder:text-[rgba(255,255,255,0.35)]"
+            className="w-full rounded-2xl border border-[#eadba6] bg-[#fffef9] px-3 py-[9px] text-[12px] text-[#111111] outline-none transition-all duration-200 placeholder:text-[#6b7280] focus:border-[#F5C800] focus:bg-white focus:shadow-[0_0_0_4px_rgba(245,200,0,0.16)]"
           />
         </div>
         <div>
-          <label className="mb-1.5 block text-[10px] font-medium tracking-[0.5px] text-[rgba(255,255,255,0.4)]">
+          <label className="mb-1.5 block text-[10px] font-semibold tracking-[0.5px] text-[#8c6f00]">
             MENTIONS
           </label>
           <input
             value={mentions}
             onChange={(event) => onMentionsChange(event.target.value)}
             placeholder="@partner, @brand"
-            className="w-full rounded-[10px] border border-[rgba(255,255,255,0.08)] bg-[#1a1a1a] px-3 py-[9px] text-[12px] text-white outline-none placeholder:text-[rgba(255,255,255,0.35)]"
+            className="w-full rounded-2xl border border-[#eadba6] bg-[#fffef9] px-3 py-[9px] text-[12px] text-[#111111] outline-none transition-all duration-200 placeholder:text-[#6b7280] focus:border-[#F5C800] focus:bg-white focus:shadow-[0_0_0_4px_rgba(245,200,0,0.16)]"
           />
         </div>
       </div>
 
       <div>
-        <label className="mb-1.5 block text-[10px] font-medium tracking-[0.5px] text-[rgba(255,255,255,0.4)]">
-          MEDIA
-        </label>
+        <div className="mb-1.5 flex items-center justify-between gap-3">
+          <label className="block text-[10px] font-semibold tracking-[0.5px] text-[#8c6f00]">
+            MEDIA
+          </label>
+          {selectedMediaCount ? (
+            <span className="rounded-full border border-[#e5ca61] bg-[#ffe98e] px-2.5 py-1 text-[10px] font-semibold text-[#5b4500]">
+              {selectedMediaCount} selected
+            </span>
+          ) : null}
+        </div>
         <button
           type="button"
           onClick={() => inputRef.current?.click()}
           onDragOver={(event) => event.preventDefault()}
           onDrop={handleDrop}
-          className="w-full rounded-[10px] border-[1.5px] border-dashed border-[rgba(255,255,255,0.12)] bg-[#1a1a1a] px-5 py-5 text-center transition-all duration-200 hover:-translate-y-0.5 hover:bg-[rgba(255,255,255,0.04)]"
+          className="w-full rounded-2xl border-[1.5px] border-dashed border-[#e5ca61] bg-[#fffef9] px-5 py-6 text-center transition-all duration-200 hover:-translate-y-0.5 hover:border-[#F5C800] hover:bg-[#fff7d1]"
         >
-          <span className="mx-auto flex h-7 w-7 items-center justify-center rounded-[8px] bg-[rgba(255,255,255,0.06)] text-[14px] text-[rgba(255,255,255,0.5)]">
+          <span className="mx-auto flex h-8 w-8 items-center justify-center rounded-[10px] bg-[#fff2b8] text-[14px] font-semibold text-[#5b4500]">
             ^
           </span>
-          <span className="mt-2 block text-[12px] text-[rgba(255,255,255,0.5)]">
+          <span className="mt-2 block text-[12px] font-medium text-[#1f2937]">
             {uploading ? "Uploading files..." : "Drop files here or click to upload"}
           </span>
-          <span className="mt-1 block text-[10px] text-[rgba(255,255,255,0.3)]">
+          <span className="mt-1 block text-[10px] text-[#344054]">
             Images and videos supported
           </span>
         </button>
@@ -204,14 +212,14 @@ export function PostEditor({
       />
 
       <div className="mt-4">
-        <label className="mb-1.5 block text-[10px] font-medium tracking-[0.5px] text-[rgba(255,255,255,0.4)]">
+        <label className="mb-1.5 block text-[10px] font-semibold tracking-[0.5px] text-[#8c6f00]">
           ALT TEXT
         </label>
         <input
           value={altText}
           onChange={(event) => onAltTextChange(event.target.value)}
           placeholder="Optional description applied while uploading"
-          className="w-full rounded-[10px] border border-[rgba(255,255,255,0.08)] bg-[#1a1a1a] px-3 py-[9px] text-[12px] text-white outline-none placeholder:text-[rgba(255,255,255,0.35)]"
+          className="w-full rounded-2xl border border-[#eadba6] bg-[#fffef9] px-3 py-[9px] text-[12px] text-[#111111] outline-none transition-all duration-200 placeholder:text-[#6b7280] focus:border-[#F5C800] focus:bg-white focus:shadow-[0_0_0_4px_rgba(245,200,0,0.16)]"
         />
       </div>
 
@@ -224,22 +232,22 @@ export function PostEditor({
                   key={asset.id}
                   className={`flex cursor-pointer items-center gap-3 rounded-[10px] border p-3 transition-all duration-200 ${
                     checked
-                      ? "border-[rgba(245,200,0,0.45)] bg-[rgba(255,255,255,0.04)]"
-                      : "border-[rgba(255,255,255,0.08)] bg-[#1a1a1a] hover:bg-[rgba(255,255,255,0.04)]"
+                      ? "border-[#efcf59] bg-[#fff2b8]"
+                      : "border-[#f0e2b2] bg-[#fffef9] hover:bg-[#fff7d1]"
                   }`}
                 >
                   <input
                     type="checkbox"
                     checked={checked}
                     onChange={(event) => onMediaSelectionToggle(asset.id, event.target.checked)}
-                    className="h-4 w-4 rounded-[4px] border-[1.5px] border-[rgba(255,255,255,0.2)] bg-transparent text-[#F5C800] focus:ring-0"
+                    className="h-4 w-4 rounded-[4px] border-[1.5px] border-[#d8c36e] bg-white text-[#F5C800] focus:ring-0"
                   />
                   <MediaThumbnail asset={asset} />
                   <div className="min-w-0 flex-1">
-                    <div className="truncate text-[12px] font-medium text-white">
+                    <div className="truncate text-[12px] font-semibold text-[#111111]">
                       {asset.alt_text || `Media #${asset.id}`}
                     </div>
-                    <div className="mt-1 text-[10px] text-[rgba(255,255,255,0.35)]">
+                    <div className="mt-1 text-[10px] text-[#344054]">
                       {asset.file_type.toUpperCase()}
                     </div>
                   </div>
@@ -251,4 +259,3 @@ export function PostEditor({
     </section>
   );
 }
-
