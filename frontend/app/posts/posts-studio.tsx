@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { EditPostModal } from "@/components/edit-post-modal-v2";
 import { ErrorNotice } from "@/components/error-notice";
+import { LivePostMetricsModal } from "@/components/live-post-metrics-modal";
 import { PostComposerModal } from "@/components/post-composer-modal-v2";
 import { cancelPost, fetchPosts } from "@/lib/api";
 import { Post } from "@/lib/types";
@@ -45,6 +46,7 @@ export default function PostsStudio() {
   const [statusFilter, setStatusFilter] = useState<FilterStatus>("all");
   const [viewMode, setViewMode] = useState<ViewMode>("list");
   const [selectedPostId, setSelectedPostId] = useState<number | null>(null);
+  const [viewingMetricsPostId, setViewingMetricsPostId] = useState<number | null>(null);
 
   async function load() {
     try {
@@ -149,6 +151,18 @@ export default function PostsStudio() {
                           <span className="secondary-button px-3 py-2 text-xs">Edit</span>
                           <span className="secondary-button px-3 py-2 text-xs">Reschedule</span>
                           <span className="secondary-button px-3 py-2 text-xs">Delete</span>
+                          {post.status === "posted" && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setViewingMetricsPostId(post.id);
+                              }}
+                              className="secondary-button px-3 py-2 text-xs"
+                            >
+                              Live View
+                            </button>
+                          )}
                         </div>
                       </button>
                     ))}
@@ -199,6 +213,15 @@ export default function PostsStudio() {
                     <button type="button" onClick={() => setEditingPost(selectedPost)} className="primary-button w-full justify-center py-3">Edit Post</button>
                     <button type="button" onClick={() => setEditingPost(selectedPost)} className="secondary-button w-full justify-center py-3">Reschedule</button>
                     <button type="button" onClick={() => void handleDelete(selectedPost.id)} className="secondary-button w-full justify-center py-3">Delete</button>
+                    {selectedPost.status === "posted" && (
+                      <button
+                        type="button"
+                        onClick={() => setViewingMetricsPostId(selectedPost.id)}
+                        className="secondary-button w-full justify-center py-3"
+                      >
+                        Live View
+                      </button>
+                    )}
                   </div>
                 </>
               ) : <div className="rounded-[20px] border border-dashed border-[#e5dbc8] bg-[#fff8e8] px-4 py-10 text-sm text-ink-500">Select a post to inspect details here.</div>}
@@ -209,6 +232,14 @@ export default function PostsStudio() {
 
       <PostComposerModal open={composerOpen} onClose={() => setComposerOpen(false)} onCreated={load} />
       <EditPostModal post={editingPost} onClose={() => setEditingPost(null)} onSaved={load} />
+      {viewingMetricsPostId && (
+        <LivePostMetricsModal
+          postId={viewingMetricsPostId}
+          platform={posts.find((post) => post.id === viewingMetricsPostId)?.platform || "unknown"}
+          open={true}
+          onClose={() => setViewingMetricsPostId(null)}
+        />
+      )}
     </>
   );
 }
