@@ -26,7 +26,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title=get_settings().PROJECT_NAME,
     description="Multi-platform Social Media Scheduler",
-    version="1.0.0",
+    version="1.0.1",  # Bumped version to trigger Railway deploy
     lifespan=lifespan,
     openapi_url=f"{get_settings().API_V1_STR}/openapi.json",
     swagger_ui_init_oauth={

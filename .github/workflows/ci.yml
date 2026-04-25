@@ -75,6 +75,7 @@ jobs:
           CLOUDINARY_CLOUD_NAME: ci
           CLOUDINARY_API_KEY: ci
           CLOUDINARY_API_SECRET: ci
+<<<<<<< HEAD
         run: uv run alembic upgrade head
 
       - name: Start API
@@ -131,6 +132,8 @@ jobs:
           CLOUDINARY_CLOUD_NAME: ci
           CLOUDINARY_API_KEY: ci
           CLOUDINARY_API_SECRET: ci
+=======
+>>>>>>> socialsnyc2/master
         run: uv run pytest tests -q
 
   frontend-build:

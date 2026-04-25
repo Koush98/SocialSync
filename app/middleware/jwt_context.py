@@ -57,6 +57,7 @@ def _build_developer_user(request: Request, settings) -> CurrentUser:
 
 
 async def jwt_context_middleware(request: Request, call_next):
+    """JWT authentication middleware with CORS support for error responses."""
     oauth_path = request.url.path.startswith("/api/v1/oauth/")
     oauth_callback_path = oauth_path and request.url.path.endswith("/callback")
     auth_exchange_path = request.url.path == "/api/v1/auth/webview/exchange"
@@ -94,16 +95,34 @@ async def jwt_context_middleware(request: Request, call_next):
         except Exception as exc:
             detail = getattr(exc, "detail", "Invalid bearer token")
             status_code = getattr(exc, "status_code", 401)
-            return JSONResponse(status_code=status_code, content={"detail": detail})
+            response = JSONResponse(status_code=status_code, content={"detail": detail})
+            # Add CORS headers to error response
+            origin = request.headers.get("origin")
+            if origin:
+                response.headers["Access-Control-Allow-Origin"] = origin
+                response.headers["Access-Control-Allow-Credentials"] = "true"
+            return response
     elif oauth_path and settings.ALLOW_PUBLIC_OAUTH_LOGIN:
         current_user = _build_developer_user(request, settings)
     elif settings.AUTH_REQUIRED and not settings.ALLOW_DEV_TENANT_HEADER:
-        return JSONResponse(status_code=401, content={"detail": "Bearer token is required"})
+        response = JSONResponse(status_code=401, content={"detail": "Bearer token is required"})
+        # Add CORS headers to error response
+        origin = request.headers.get("origin")
+        if origin:
+            response.headers["Access-Control-Allow-Origin"] = origin
+            response.headers["Access-Control-Allow-Credentials"] = "true"
+        return response
 
     if current_user is None and settings.ALLOW_DEV_TENANT_HEADER:
         current_user = _build_developer_user(request, settings)
     elif current_user is None:
-        return JSONResponse(status_code=401, content={"detail": "Tenant context is missing"})
+        response = JSONResponse(status_code=401, content={"detail": "Tenant context is missing"})
+        # Add CORS headers to error response
+        origin = request.headers.get("origin")
+        if origin:
+            response.headers["Access-Control-Allow-Origin"] = origin
+            response.headers["Access-Control-Allow-Credentials"] = "true"
+        return response
 
     request.state.current_user = current_user
     request.state.request_context = RequestContext(
